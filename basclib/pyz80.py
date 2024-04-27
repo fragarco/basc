@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
-from __future__ import division
 import math
 
 # TODO: define and assemble macro blocks
@@ -9,15 +7,13 @@ import math
 # defs doesn't cause bytes to be written to output unless real data follows
 
 def printusage():
-    print("pyz80 by Andrew Collier, modified by Simon Owen")
-    print(" https://github.com/simonowen/pyz80/")
+    print("pyz80 by Andrew Collier, modified by Simon Owen and finally")
+    print("by Javier Garcia to adjust it for the Amstrad CPC")
     print("Usage:")
     print("     pyz80 (options) inputfile(s)")
     print("Options:")
     print("-o outputfile")
     print("   save the resulting disk image at the given path")
-    print("--nozip")
-    print("   do not compress the resulting disk image")
     print("-I filepath")
     print("   Add this file to the disk image before assembling")
     print("   May be used multiple times to add multiple files")
@@ -66,17 +62,10 @@ def printlicense():
 import getopt
 import sys, os, datetime
 import array
-import fileinput
 import re
-import gzip
 import math # for use by expressions in source files
-import random
-
-# Try for native pickle (2.x), fall back on Python version (3.x)
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
+import dsk
 
 def new_disk_image():
 
@@ -260,10 +249,7 @@ def array_bytes(arr):
 
 def save_disk_image(image, pathname):
     imagestr = array_bytes(image)
-    if ZIP:
-        dskfile = gzip.open(pathname, 'wb')
-    else:
-        dskfile = open(pathname, 'wb')
+    dskfile = open(pathname, 'wb')
     dskfile.write(imagestr)
     dskfile.close()
 
@@ -1774,7 +1760,7 @@ def assembler_pass(p, inputfile):
 ###########################################################################
 
 try:
-    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:s:eD:I:', ['version','help','nozip','obj=','case','nobodmas','intdiv','exportfile=','importfile=','mapfile=','lstfile='])
+    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:s:eD:I:', ['version','help','obj=','case','nobodmas','intdiv','exportfile=','importfile=','mapfile=','lstfile='])
     file_args = [os.path.normpath(x) for x in file_args]
 except getopt.GetoptError:
     printusage()
@@ -1785,7 +1771,6 @@ outputfile = ''
 objectfile = ''
 
 PYTHONERRORS = False
-ZIP = True
 CASE = False
 NOBODMAS = False
 INTDIV = False
@@ -1825,9 +1810,6 @@ for option,value in option_args:
 
     if option in ['-e']:
         PYTHONERRORS = True # let python do its own error handling
-
-    if option in ['--nozip']:
-        ZIP = False # save the disk image without compression
 
     if option in ['--nobodmas']:
         NOBODMAS = True # use no operator precedence

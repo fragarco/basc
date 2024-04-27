@@ -364,7 +364,7 @@ class Disk:
             with open(outputfile, 'wb') as fd:
                 fd.write(content)
         except IOError:
-            print("[pycpc-dsk] could not write file:", outputfile)
+            print("[dsk] could not write file:", outputfile)
 
     def read(self, inputfile):
         content = bytearray()
@@ -378,9 +378,9 @@ class Disk:
             self.set(content)
             return True      
         except IOError:
-            print("[pycpc-dsk] could not read file:", inputfile)
+            print("[dsk] could not read file:", inputfile)
         except FormatError as e:
-            print("[pycpc-dsk] error in input file:", e.message)
+            print("[dsk] error in input file:", e.message)
         return False
 
     def check(self):
@@ -733,7 +733,7 @@ class AmsdosHead:
 
 
 def run_new(args, disk):
-    print("[pycpc-dsk] creating", args.dskfile)
+    print("[dsk] creating", args.dskfile)
     disk.write(args.dskfile)
 
 def run_check(args,disk):
@@ -741,19 +741,19 @@ def run_check(args,disk):
             sys.exit(1)
     try:
         disk.check()
-        print("[pycpc-dsk]", args.dskfile, "format seems correct")
+        print("[dsk]", args.dskfile, "format seems correct")
     except FormatError as e:
-        print("[pycpc-dsk] unsupported DSK format:", e.message)
+        print("[dsk] unsupported DSK format:", e.message)
         sys.exit(1)
 
 def run_dump(args, disk):
     run_check(args, disk)
-    print("[pycpc-dsk] dumping information for file", args.dskfile)
+    print("[dsk] dumping information for file", args.dskfile)
     disk.dump()
 
 def run_cat(args, disk):
     run_check(args, disk)
-    print("[pycpc-dsk] listing", args.dskfile, "content:")
+    print("[dsk] listing", args.dskfile, "content:")
     dirtable = disk.get_dirtable()
     dirtable.dump()
 
@@ -761,10 +761,10 @@ def run_check_direntry(disk, ientry):
     dirtable = disk.get_dirtable()
     entry = dirtable.entries[ientry]
     if entry.status == CPM_DELETED:
-        print("[pycpc-dsk] specified directory entry does not contain a file")
+        print("[dsk] specified directory entry does not contain a file")
         sys.exit(1)
     if entry.extend > 0:
-        print("[pycpc-dsk] specified directory entry is not a file starting entry")
+        print("[dsk] specified directory entry is not a file starting entry")
         sys.exit(1)
     return dirtable, entry
 
@@ -776,7 +776,7 @@ def run_dump_header(args, disk):
     content = disk.get_content(t, s, b)
     header = AmsdosHead()
     header.set(content)
-    print("[pycpc-dsk] header located at track:", t, "sector:", s)
+    print("[dsk] header located at track:", t, "sector:", s)
     if not header.is_valid_header():
         print("but it doesn't seem to contain a valid AMSDOS header:")
         for byte in content[0:69]: print(hex(byte), end=' ')
@@ -797,7 +797,7 @@ def run_get_file(args, disk):
     if head.is_valid_header():
         realsz = head.file_size + 128
         if args.no_header:
-            print("[pycpc-dsk] removing ASMDOS header from", filename)
+            print("[dsk] removing ASMDOS header from", filename)
             data = data[128:]
             realsz = realsz - 128
     try:
@@ -805,8 +805,8 @@ def run_get_file(args, disk):
         with open(filename, 'wb') as fd:
             fd.write(data)
     except IOError:
-        print("[pycpc-dsk] error trying to write file:", filename)
-    print("[pycpc-dsk] file", filename, "was extracted:", npages, "pages of data,",len(data), "bytes written")
+        print("[dsk] error trying to write file:", filename)
+    print("[dsk] file", filename, "was extracted:", npages, "pages of data,",len(data), "bytes written")
 
 def run_read_input_file(inputfile):
     content = bytearray()
@@ -819,19 +819,19 @@ def run_read_input_file(inputfile):
                 content.extend(bytes)
                 bytes = fd.read(chunksz)
         if len(content) > filemaxsz:
-            print("[pycpc-dsk] files cannot be bigger than 64K")
+            print("[dsk] files cannot be bigger than 64K")
             sys.exit(1)
         return content      
     except IOError:
-        print("[pycpc-dsk] error reading file:", inputfile)
+        print("[dsk] error reading file:", inputfile)
         sys.exit(1)
 
 def run_put_file(infile, dskfile, disk, content):
-    print ("[pycpc-dsk] writting", len(content), "bytes")
+    print ("[dsk] writting", len(content), "bytes")
     dirtable = disk.get_dirtable()
     ientry = dirtable.can_allocate(len(content))
     if ientry == -1:
-        print("[pycpc-dsk] disk lacks enough free space to include the new file")
+        print("[dsk] disk lacks enough free space to include the new file")
         sys.exit(1)
     sectors = dirtable.write_entries(ientry, infile, len(content))
     disk.set_dirtable(dirtable)
@@ -840,7 +840,7 @@ def run_put_file(infile, dskfile, disk, content):
 
 def run_put_asciifile(args, disk):
     content = run_read_input_file(args.put_ascii)
-    print("[pycpc-dsk] adding ASCII file", args.put_ascii, "to", args.dskfile)
+    print("[dsk] adding ASCII file", args.put_ascii, "to", args.dskfile)
     run_check(args, disk)
     # ASCII files always go without AMSDOS header. Additionaly, CPM 2.2 uses a 
     # special character to indicate end of file. Lets check if the file already
@@ -851,15 +851,16 @@ def run_put_asciifile(args, disk):
 
 def run_put_binfile(args, disk, infile, addheader):
     content = run_read_input_file(infile)
-    print("[pycpc-dsk] adding binary file",
+    print("[dsk] adding binary file",
           infile, "to", args.dskfile,
           '' if addheader else 'without adding an AMSDOS header')
     run_check(args, disk)
     header = AmsdosHead()
-    header.set(content[0:128])
-    if header.is_valid_header() and addheader:
-        print('[pycpc-dsk] AMSDOS header found, deleting it before generating a new one')
-        content = content[128:]
+    if len(content) > 128:
+        header.set(content[0:128])
+        if header.is_valid_header() and addheader:
+            print('[dsk] AMSDOS header found, deleting it before generating a new one')
+            content = content[128:]
     if addheader:
         header.build(infile, len(content))
         if args.load_addr != None: header.addr_load = args.load_addr
@@ -883,7 +884,7 @@ def process_args():
     )
     parser.add_argument('dskfile', help="DSK file. Used as input/output depending on the arguments used.")
     parser.add_argument('--new', action='store_true', help='Creates a new empty DSK file.')
-    parser.add_argument('--check', action='store_true', help='Checks if the DSK file format is compatible with pycpc-dsk.')
+    parser.add_argument('--check', action='store_true', help='Checks if the DSK file format is compatible with dsk.')
     parser.add_argument('--dump', action='store_true', help='Prints DSK file format information on the standard ouput.')
     parser.add_argument('--cat', action='store_true', help='Lists in the standard output the DSK file content.')
     parser.add_argument('--header', type=int, help='Prints AMSDOS header for indicated file entry starting at 0.')
