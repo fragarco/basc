@@ -31,14 +31,8 @@ def printusage():
     print("Options:")
     print("-o outputfile")
     print("   save the resulting output code as a raw binary file at the given path")
-    print("-D symbol")
-    print("-D symbol=value")
-    print("   Define a symbol before parsing the source")
-    print("   (value is integer; if omitted, assume 1)")
-    print("--mapfile=filename")
-    print("   Save address-to-symbol map into the given file")
-    print("--lstfile=filename")
-    print("   Produce assembly listing into given file")
+    print("-d symbol=value")
+    print("   Define a symbol with an integer value before parsing the source")
     print("--case")
     print("   treat source labels as case sensitive (as COMET itself did)")
     print("--nobodmas")
@@ -464,8 +458,7 @@ def dump(bytes):
            # if b<0 or b>255:
            #     warning("Dump byte out of range")
             memory[dumppage][dumporigin] = b
-            if listingfile != None:
-              lstcode=lstcode+"%02X "%(b)
+            lstcode=lstcode+"%02X "%(b)
             dumporigin += 1
             if dumporigin == 16384:
                 dumporigin = 0
@@ -1511,13 +1504,13 @@ def assembler_pass(p, inputfile):
 
         if (opcode):
             bytes = assemble_instruction(p,opcode)
-            if p>1 and listingfile != None:
+            if p > 1:
               lstout="%04X %-13s\t%s"%(origin,lstcode,wholefile[consider_linenumber].rstrip())
               lstcode=""
               writelisting(lstout)
             origin = (origin + bytes) % 65536
         else:
-          if p>1 and listingfile != None:
+          if p > 1:
             lstout="    %-13s\t%s"%("",wholefile[consider_linenumber].rstrip())
             lstcode=""
             writelisting(lstout)
@@ -1527,10 +1520,18 @@ def assembler_pass(p, inputfile):
 
         consider_linenumber += 1
 
+
+listingfile = None
+def writelisting(line):
+    global listingfile
+    if listingfile == None:
+        listingfile = open(os.path.splitext(outputfile)[0] + '.lst', "wt")
+    listingfile.write(line+"\n")
+
 ###########################################################################
 
 try:
-    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:eD:', ['help','case','nobodmas','intdiv','mapfile=','lstfile='])
+    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:ed:', ['help','case','nobodmas','intdiv'])
     file_args = [os.path.normpath(x) for x in file_args]
 except getopt.GetoptError:
     printusage()
@@ -1547,19 +1548,14 @@ SPT = 10
 lstcode=""
 predefsymbols=[]
 mapfile = None
-listingfile = None
 
-def writelisting(line):
-  if listingfile != None:
-    listingfile.write(line+"\n")
-
-for option,value in option_args:
+for option, value in option_args:
     if option in ['--help','-h']:
         printusage()
         sys.exit(0)
 
     if option in ['-o']:
-        outputfile=value
+        outputfile = value
 
     if option in ['--nobodmas']:
         NOBODMAS = True # use no operator precedence
@@ -1570,23 +1566,7 @@ for option,value in option_args:
     if option in ['--intdiv']:
         INTDIV = True
 
-    if option in ['--mapfile']:
-        if mapfile == None:
-            mapfile = value
-        else:
-            print("Map file specified twice")
-            printusage()
-            sys.exit(2)
-
-    if option in ['--lstfile']:
-        if listingfile == None:
-            listingfile=open(value,"wt")
-        else:
-            print("List file specified twice")
-            printusage()
-            sys.exit(2)
-
-    if option in ['-D']:
+    if option in ['-d']:
         predefsymbols.append(value)
 
 if len(file_args) == 0:
@@ -1663,21 +1643,22 @@ for inputfile in file_args:
             print(item[1])
         sys.exit(1)
 
-    if mapfile:
-        addrmap = {}
-        for sym,count in sorted(list(symusetable.items()), key=lambda x: x[1]):
-            if sym in labeltable:
-                symkey = sym if CASE else sym.upper()
-                symorig = symbolcase.get(sym, sym)
+    # dump map file
+    mapfile = os.path.splitext(outputfile)[0] + '.map'
+    addrmap = {}
+    for sym, count in sorted(list(symusetable.items()), key=lambda x: x[1]):
+        if sym in labeltable:
+            symkey = sym if CASE else sym.upper()
+            symorig = symbolcase.get(sym, sym)
 
-                if symorig[0] == '@':
-                    symorig += ':' + sym.rsplit(':', 1)[1]
+            if symorig[0] == '@':
+                symorig += ':' + sym.rsplit(':', 1)[1]
 
-                addrmap[labeltable[sym]] = symorig
+            addrmap[labeltable[sym]] = symorig
 
-        with open(mapfile,'w') as f:
-            for addr,sym in sorted(addrmap.items()):
-                f.write("%04X=%s\n" % (addr,sym))
+    with open(mapfile,'w') as f:
+        for addr,sym in sorted(addrmap.items()):
+            f.write("%04X=%s\n" % (addr,sym))
 
     save_memory(memory, filename=outputfile)
 
