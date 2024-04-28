@@ -567,8 +567,6 @@ def op_EQU(p,opargs):
 
 def op_NEXT(p,opargs):
     global global_currentfile
-
-
     check_args(opargs,1)
     foritem = forstack.pop()
     if opargs != foritem[0]:
@@ -599,6 +597,7 @@ def op_ALIGN(p,opargs):
 
 def op_DS(p,opargs):
     return op_DEFS(p,opargs)
+
 def op_DEFS(p,opargs):
     global dumppage, dumporigin, dumpspace_pending
     check_args(opargs,1)
@@ -614,6 +613,7 @@ def op_DEFS(p,opargs):
 
 def op_DB(p,opargs):
     return op_DEFB(p,opargs)
+
 def op_DEFB(p,opargs):
     s = opargs.split(',')
     if (p==2):
@@ -627,6 +627,7 @@ def op_DEFB(p,opargs):
 
 def op_DW(p,opargs):
     return op_DEFW(p,opargs)
+
 def op_DEFW(p,opargs):
     s = opargs.split(',')
     if (p==2):
@@ -637,6 +638,7 @@ def op_DEFW(p,opargs):
 
 def op_DM(p,opargs):
     return op_DEFM(p,opargs)
+
 def op_DEFM(p,opargs):
     messagelen = 0
     if opargs.strip()=="44" or opargs=="(44)":
@@ -743,70 +745,103 @@ def op_ASSERT(p,opargs):
 
 def op_NOP(p,opargs):
     return op_noargs_type(p,opargs,[0x00])
+
 def op_RLCA(p,opargs):
     return op_noargs_type(p,opargs,[0x07])
+
 def op_RRCA(p,opargs):
     return op_noargs_type(p,opargs,[0x0F])
+
 def op_RLA(p,opargs):
     return op_noargs_type(p,opargs,[0x17])
+
 def op_RRA(p,opargs):
     return op_noargs_type(p,opargs,[0x1F])
+
 def op_DAA(p,opargs):
     return op_noargs_type(p,opargs,[0x27])
+
 def op_CPL(p,opargs):
     return op_noargs_type(p,opargs,[0x2F])
+
 def op_SCF(p,opargs):
     return op_noargs_type(p,opargs,[0x37])
+
 def op_CCF(p,opargs):
     return op_noargs_type(p,opargs,[0x3F])
+
 def op_HALT(p,opargs):
     return op_noargs_type(p,opargs,[0x76])
+
 def op_DI(p,opargs):
     return op_noargs_type(p,opargs,[0xf3])
+
 def op_EI(p,opargs):
     return op_noargs_type(p,opargs,[0xfb])
+
 def op_EXX(p,opargs):
     return op_noargs_type(p,opargs,[0xd9])
+
 def op_NEG(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0x44])
+
 def op_RETN(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0x45])
+
 def op_RETI(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0x4d])
+
 def op_RRD(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0x67])
+
 def op_RLD(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0x6F])
+
 def op_LDI(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xa0])
+
 def op_CPI(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xa1])
+
 def op_INI(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xa2])
+
 def op_OUTI(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xa3])
+
 def op_LDD(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xa8])
+
 def op_CPD(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xa9])
+
 def op_IND(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xaa])
+
 def op_OUTD(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xab])
+
 def op_LDIR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xb0])
+
 def op_CPIR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xb1])
+
 def op_INIR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xb2])
+
 def op_OTIR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xb3])
+
 def op_LDDR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xb8])
+
 def op_CPDR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xb9])
+
 def op_INDR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xba])
+
 def op_OTDR(p,opargs):
     return op_noargs_type(p,opargs,[0xed,0xbb])
 
@@ -845,26 +880,32 @@ def op_cbshifts_type(p,opargs,offset,step_per_register=1):
 
 def op_RLC(p,opargs):
     return op_cbshifts_type(p,opargs,0x00)
+
 def op_RRC(p,opargs):
     return op_cbshifts_type(p,opargs,0x08)
+
 def op_RL(p,opargs):
     return op_cbshifts_type(p,opargs,0x10)
+
 def op_RR(p,opargs):
     return op_cbshifts_type(p,opargs,0x18)
+
 def op_SLA(p,opargs):
     return op_cbshifts_type(p,opargs,0x20)
+
 def op_SRA(p,opargs):
     return op_cbshifts_type(p,opargs,0x28)
+
 def op_SLL(p,opargs):
     if (p==1):
         warning("SLL doesn't do what you probably expect on z80b! Use SL1 if you know what you're doing.")
     return op_cbshifts_type(p,opargs,0x30)
+
 def op_SL1(p,opargs):
     return op_cbshifts_type(p,opargs,0x30)
+
 def op_SRL(p,opargs):
     return op_cbshifts_type(p,opargs,0x38)
-
-
 
 def op_register_arg_type(p,opargs,offset,ninstr,step_per_register=1):
     check_args(opargs,1)
@@ -890,12 +931,16 @@ def op_register_arg_type(p,opargs,offset,ninstr,step_per_register=1):
 
 def op_SUB(p,opargs):
     return op_register_arg_type(p,opargs, 0x90, [0xd6])
+
 def op_AND(p,opargs):
     return op_register_arg_type(p,opargs, 0xa0, [0xe6])
+
 def op_XOR(p,opargs):
     return op_register_arg_type(p,opargs, 0xa8, [0xee])
+
 def op_OR(p,opargs):
     return op_register_arg_type(p,opargs, 0xb0, [0xf6])
+
 def op_CP(p,opargs):
     return op_register_arg_type(p,opargs, 0xb8, [0xfe])
 
@@ -919,11 +964,11 @@ def op_registerorpair_arg_type(p,opargs,rinstr,rrinstr,step_per_register=8,step_
     return len(instr)
 
 def op_INC(p,opargs):
-# Oh dear - COMET also used "INC" for INClude source file
+    # Oh dear - COMET also used "INC" for INClude source file
     if '"' in opargs:
         return op_INCLUDE(p,opargs)
-
     return op_registerorpair_arg_type(p,opargs, 0x04, 0x03)
+
 def op_DEC(p,opargs):
     return op_registerorpair_arg_type(p,opargs, 0x05, 0x0b)
 
@@ -975,8 +1020,10 @@ def op_add_type(p,opargs,rinstr,ninstr,rrinstr,step_per_register=1,step_per_pair
 
 def op_ADD(p,opargs):
     return op_add_type(p,opargs,[0x80], [0xc6],[0x09])
+
 def op_ADC(p,opargs):
     return op_add_type(p,opargs,[0x88], [0xce],[0xed,0x4a])
+
 def op_SBC(p,opargs):
     return op_add_type(p,opargs,[0x98], [0xde],[0xed,0x42])
 
@@ -999,13 +1046,14 @@ def op_bit_type(p,opargs,offset):
 
 def op_BIT(p,opargs):
     return op_bit_type(p,opargs, 0x40)
+
 def op_RES(p,opargs):
     return op_bit_type(p,opargs, 0x80)
+
 def op_SET(p,opargs):
     return op_bit_type(p,opargs, 0xc0)
 
 def op_pushpop_type(p,opargs,offset):
-
     check_args(opargs,1)
     prefix, rr = double(opargs, allow_af_instead_of_sp=1)
     instr = prefix
@@ -1019,6 +1067,7 @@ def op_pushpop_type(p,opargs,offset):
 
 def op_POP(p,opargs):
     return op_pushpop_type(p,opargs, 0xc1)
+
 def op_PUSH(p,opargs):
     return op_pushpop_type(p,opargs, 0xc5)
 
@@ -1404,8 +1453,8 @@ def assemble_instruction(p, line):
 def assembler_pass(p, inputfile):
     global memory, symboltable, symusetable, labeltable, origin, dumppage, dumporigin, symbol
     global global_currentfile, global_currentline, lstcode, listingfile
-# file references are local, so assembler_pass can be called recursively (for op_INC)
-# but copied to a global identifier for warning printouts
+    # file references are local, so assembler_pass can be called recursively (for op_INC)
+    # but copied to a global identifier for warning printouts
     global global_path
 
     global_currentfile="command line"
