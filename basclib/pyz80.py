@@ -13,20 +13,11 @@ def printusage():
     print("     pyz80 (options) inputfile(s)")
     print("Options:")
     print("-o outputfile")
-    print("   save the resulting disk image at the given path")
-    print("-I filepath")
-    print("   Add this file to the disk image before assembling")
-    print("   May be used multiple times to add multiple files")
-    print("--obj=outputfile")
-    print("   save the output code as a raw binary file at the given path")
+    print("   save the resulting output code as a raw binary file at the given path")
     print("-D symbol")
     print("-D symbol=value")
     print("   Define a symbol before parsing the source")
     print("   (value is integer; if omitted, assume 1)")
-    print("--exportfile=filename")
-    print("   Save all symbol information into the given file")
-    print("--importfile=filename")
-    print("   Define symbols before assembly, from a file previously exported")
     print("--mapfile=filename")
     print("   Save address-to-symbol map into the given file")
     print("--lstfile=filename")
@@ -37,224 +28,18 @@ def printusage():
     print("   treat arithmetic operators without precedence (as COMET itself did)")
     print("--intdiv")
     print("   force all division to give an integer result (as COMET itself did)")
-    print("-s regexp")
-    print("   print the value of any symbols matching the given regular expression")
-    print("   This may be used multiple times to output more than one subset")
-    print("-e")
-    print("   use python's own error handling instead of trying to catch parse errors")
-
-
-def printlicense():
-    print("This program is free software; you can redistribute it and/or modify")
-    print("it under the terms of the GNU General Public License as published by")
-    print("the Free Software Foundation; either version 2 of the License, or")
-    print("(at your option) any later version.")
-    print(" ")
-    print("This program is distributed in the hope that it will be useful,")
-    print("but WITHOUT ANY WARRANTY; without even the implied warranty of")
-    print("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the")
-    print("GNU General Public License for more details.")
-    print(" ")
-    print("You should have received a copy of the GNU General Public License")
-    print("along with this program; if not, write to the Free Software")
-    print("Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA")
 
 import getopt
 import sys, os, datetime
 import array
 import re
 import math # for use by expressions in source files
-import pickle
-import dsk
 
-def new_disk_image():
-
-    image = array.array('B')
-    image.append(0)
-    targetsize = 80*SPT*2*512
-    # disk image is arranged as: tr 0 s 1-10, tr 128 s 1-10, tr 1 s 1-10, tr 129 s 1-10 etc
-
-    while len(image) < targetsize:
-        image.extend(image)
-    while len(image) > targetsize:
-        image.pop()
-
-    return image
-
-def dsk_at(track,side,sector):
-    return (track*SPT*2+side*SPT+(sector-1))*512
-    # uses numbering 1-10 for sectors, because SAMDOS internal format also does
-
-
-def add_file_to_disk_image(image, filename, codestartpage, codestartoffset, execpage=0, execoffset=0, filelength=None, fromfile=None ):
-    global firstpageoffset, global_currentfile, global_currentline
-
-    global_currentfile = 'add file'
-    global_currentline = ''
-
-    if fromfile != None:
-        modified = datetime.datetime.fromtimestamp(os.path.getmtime(fromfile))
-        fromfilefile = open(fromfile,'rb')
-        fromfilefile.seek(0,2)
-        filelength = fromfilefile.tell()
-
-        fromfilefile.seek(0)
-        fromfile = array.array('B')
-        fromfile.fromfile(fromfilefile, filelength)
-    else:
-        modified = datetime.datetime.now()
-
-    sectors_already_used = 0
-    # we're writing the whole image, so we can take a bit of a shortcut
-    # instead of reading the entire sector map to find unused space, we can assume all files are contiguous
-    # and place new files just at the end of the used space
-
-    #find an unused directory entry
-    for direntry in range(4*SPT*2):
-        dirpos = dsk_at(direntry//(SPT*2),0,1+(direntry%(SPT*2))//2) + 256*(direntry%2)
-        if image[dirpos] == 0:
-            break
-        else:
-            sectors_already_used += image[dirpos+11]*256 +image[dirpos+12]
-
-    else:
-        fatal ("Too many files for dsk format")
-
-    image[dirpos] = 19 # code file
-
-    for i in range(10):
-        image[dirpos+1+i]  = ord((filename+"          ")[i])
-
-    nsectors = math.ceil(( filelength + 9 ) / 510)
-    image[dirpos+11] = nsectors // 256 # MSB number of sectors used
-    image[dirpos+12] = nsectors % 256 # LSB number of sectors used
-
-    starting_side =  (4 + sectors_already_used//SPT)//80
-    starting_track = (4 + sectors_already_used//SPT)%80
-    starting_sector = sectors_already_used%SPT + 1
-
-    image[dirpos+13] = starting_track + 128*starting_side # starting track
-    image[dirpos+14] = starting_sector # starting sector
-
-    # 15 - 209 sector address map
-
-    # write table of used sectors (can precalculate from number of used bits)
-    while nsectors > 0:
-        image[dirpos+15 + sectors_already_used//8] |= (1 << (sectors_already_used & 7))
-        sectors_already_used += 1
-        nsectors -= 1
-
-    # 210-219 MGT future and past (reserved)
-
-    image[dirpos+220] = 0 # flags (reserved)
-
-    # 221-231 File type information (n/a for code files)
-    # 232-235 reserved
-
-    image[dirpos+236] = codestartpage # start page number
-    image[dirpos+237] = (codestartoffset%256) # page offset (in section C, 0x8000 - 0xbfff)
-    image[dirpos+238] = 128 + (codestartoffset // 256)
-
-    image[dirpos+239] = filelength//16384 # pages in length
-    image[dirpos+240] = filelength%256 # file length % 16384
-    image[dirpos+241] = (filelength%16384)//256
-
-    if (execpage>0) :
-        image[dirpos+242] = execpage # execution address or 255 255 255 (basicpage, L, H - offset in page C)
-        image[dirpos+243] = execoffset % 256
-        image[dirpos+244] = (execoffset%16384)//256 + 128
-    else:
-        image[dirpos+242] = 255 # execution address or 255 255 255 (basicpage, L, H - offset in page C)
-        image[dirpos+243] = 255
-        image[dirpos+244] = 255
-
-    image[dirpos+245] = modified.day
-    image[dirpos+246] = modified.month
-    image[dirpos+247] = modified.year % 100 + 100
-    image[dirpos+248] = modified.hour
-    image[dirpos+249] = modified.minute
-
-    side = starting_side
-    track = starting_track
-    sector = starting_sector
-    fpos = 0
-
-# write file's 9 byte header and file
-    imagepos = dsk_at(track,side,sector)
-
-# 0       File type               19 for a code file
-    image[imagepos + 0] = 19
-# 1-2     Modulo length           Length of file % 16384
-    image[imagepos + 1] = filelength%256
-    image[imagepos + 2] = (filelength%16384)//256
-# 3-4     Offset start            Start address
-    image[imagepos + 3] = (codestartoffset%256)
-    image[imagepos + 4] = 128 + (codestartoffset // 256)
-# 5-6     Unused
-# 7       Number of pages
-    image[imagepos + 7] = filelength//16384
-# 8       Starting page number
-    image[imagepos + 8] = codestartpage
-
-    start_of_file = True
-    while fpos < filelength:
-        imagepos = dsk_at(track,side,sector)
-        unadjustedimagepos = imagepos
-        if start_of_file:
-            if filelength > 500:
-                copylen = 501
-            else:
-                copylen = filelength
-            imagepos += 9
-            start_of_file = False
-        else:
-            if (filelength-fpos) > 509:
-                copylen = 510
-            else:
-                copylen = (filelength-fpos)
-
-        if fromfile != None:
-            image[imagepos:imagepos+copylen] = fromfile[fpos:fpos+copylen]
-        else:
-            if ((fpos+firstpageoffset)//16384) == (((fpos+codestartoffset)+copylen-1)//16384):
-                if memory[codestartpage+(fpos+codestartoffset)//16384] != '':
-                    image[imagepos:imagepos+copylen] = memory[codestartpage+(fpos+firstpageoffset)//16384][(fpos+codestartoffset)%16384 : (fpos+codestartoffset)%16384+copylen]
-            else:
-                copylen1 = 16384 - ((fpos+codestartoffset)%16384)
-                page1 = (codestartpage+(fpos+codestartoffset)//16384)
-                if memory[page1] != '':
-                    image[imagepos:imagepos+copylen1] = memory[page1][(fpos+codestartoffset)%16384 : ((fpos+codestartoffset)%16384)+copylen1]
-                if (page1 < 31) and memory[page1+1] != '':
-                    image[imagepos+copylen1:imagepos+copylen] = memory[page1+1][0 : ((fpos+codestartoffset)+copylen)%16384]
-
-        fpos += copylen
-
-        sector += 1
-        if sector == (SPT+1):
-            sector = 1
-            track += 1
-            if track == 80:
-                track = 0
-                side += 1
-                if side==2:
-                    fatal("Disk full writing "+filename)
-
-        # pointers to next sector and track
-        if (fpos < filelength):
-            image[unadjustedimagepos+510] = track + 128*side
-            image[unadjustedimagepos+511] = sector
 
 def array_bytes(arr):
     return arr.tobytes() if hasattr(arr, "tobytes") else arr.tostring()
 
-def save_disk_image(image, pathname):
-    imagestr = array_bytes(image)
-    dskfile = open(pathname, 'wb')
-    dskfile.write(imagestr)
-    dskfile.close()
-
-
-def save_memory(memory, image=None, filename=None):
+def save_memory(memory, filename=None):
     global firstpage,firstpageoffset
 
     if firstpage==32:
@@ -270,28 +55,7 @@ def save_memory(memory, image=None, filename=None):
         filelength -= firstpageoffset
         filelength -= 16384-lastpageoffset
 
-        if (autoexecpage>0) :
-            savefilename = ("AUTO" + filename + "    ")[:8]+".O"
-        else:
-            savefilename = (filename + "    ")[:8]+".O"
-
-        if image:
-            add_file_to_disk_image(image,savefilename,firstpage, firstpageoffset, autoexecpage, autoexecorigin, filelength)
-        else:
-            save_memory_to_file(filename, firstpage, firstpageoffset, filelength)
-
-def save_file_to_image(image, pathname):
-    sam_filename = os.path.basename(pathname)
-
-    if len(sam_filename)>10:
-        if sam_filename.count("."):
-            extpos = sam_filename.rindex(".")
-            extlen = len(sam_filename)-extpos
-            sam_filename = sam_filename[:10-extlen] + sam_filename[extpos:]
-        else:
-            sam_filename = sam_filename[:10]
-
-    add_file_to_disk_image(image,sam_filename, 1, 0, fromfile=pathname)
+        save_memory_to_file(filename, firstpage, firstpageoffset, filelength)
 
 def save_memory_to_file(filename, firstusedpage, firstpageoffset, filelength):
     objfile = open(filename, 'wb')
@@ -306,7 +70,6 @@ def save_memory_to_file(filename, firstusedpage, firstpageoffset, filelength):
         if memory[page] != "":
             pagestr = array_bytes(memory[page])
             objfile.write(pagestr[offset:offset+wlen])
-
 
         else:
             # write wlen nothings into the file
@@ -1634,15 +1397,12 @@ def assemble_instruction(p, line):
 
     if (ifstate < 2) or inst in ('IF', 'ELSE', 'ENDIF'):
         functioncall = 'op_'+inst+'(p,args)'
-        if PYTHONERRORS:
+        try:
             return eval(functioncall)
-        else:
-            try:
-                return eval(functioncall)
-            except SystemExit as e:
-                sys.exit(e)
-            except:
-                fatal("Opcode not recognised")
+        except SystemExit as e:
+            sys.exit(e)
+        except:
+            fatal("Opcode not recognised")
     else:
         return 0
 
@@ -1760,7 +1520,7 @@ def assembler_pass(p, inputfile):
 ###########################################################################
 
 try:
-    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:s:eD:I:', ['version','help','obj=','case','nobodmas','intdiv','exportfile=','importfile=','mapfile=','lstfile='])
+    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:eD:', ['help','case','nobodmas','intdiv','mapfile=','lstfile='])
     file_args = [os.path.normpath(x) for x in file_args]
 except getopt.GetoptError:
     printusage()
@@ -1768,20 +1528,14 @@ except getopt.GetoptError:
 
 inputfile = ''
 outputfile = ''
-objectfile = ''
 
-PYTHONERRORS = False
 CASE = False
 NOBODMAS = False
 INTDIV = False
 SPT = 10
 
 lstcode=""
-listsymbols=[]
 predefsymbols=[]
-includefiles=[]
-importfiles=[]
-exportfile = None
 mapfile = None
 listingfile = None
 
@@ -1790,26 +1544,12 @@ def writelisting(line):
     listingfile.write(line+"\n")
 
 for option,value in option_args:
-    if option in ['--version']:
-        printusage()
-        print("")
-        printlicense()
-        sys.exit(0)
     if option in ['--help','-h']:
         printusage()
         sys.exit(0)
 
     if option in ['-o']:
         outputfile=value
-
-    if option in ['--obj']:
-        objectfile=value
-
-    if option in ['-s']:
-        listsymbols.append(value)
-
-    if option in ['-e']:
-        PYTHONERRORS = True # let python do its own error handling
 
     if option in ['--nobodmas']:
         NOBODMAS = True # use no operator precedence
@@ -1819,17 +1559,6 @@ for option,value in option_args:
 
     if option in ['--intdiv']:
         INTDIV = True
-
-    if option in ['--exportfile']:
-        if exportfile == None:
-            exportfile = value
-        else:
-            print("Export file specified twice")
-            printusage()
-            sys.exit(2)
-
-    if option in  ['--importfile']:
-        importfiles.append(value)
 
     if option in ['--mapfile']:
         if mapfile == None:
@@ -1850,32 +1579,16 @@ for option,value in option_args:
     if option in ['-D']:
         predefsymbols.append(value)
 
-    if option in ['-I']:
-        includefiles.append(value)
-        if os.path.basename(includefiles[0]).lower() == 'samdos9':
-            SPT = 9
-
-if len(file_args) == 0 and len(includefiles) == 0:
+if len(file_args) == 0:
     print("No input file specified")
     printusage()
     sys.exit(2)
 
-if (objectfile != '') and (len(file_args) != 1):
-    print("Object file output supports only a single source file")
-    printusage()
-    sys.exit(2)
-
-if (outputfile == '') and (objectfile == ''):
-    outputfile = os.path.splitext(file_args[0])[0] + ".dsk"
-
-image = new_disk_image()
-
-for pathname in includefiles:
-    save_file_to_image(image,pathname)
+if (outputfile == ''):
+    outputfile = os.path.splitext(file_args[0])[0] + ".bin"
 
 for inputfile in file_args:
-
-    if (inputfile == outputfile) or (inputfile == objectfile):
+    if (inputfile == outputfile):
         print("Output file and input file are the same!")
         printusage()
         sys.exit(2)
@@ -1895,24 +1608,12 @@ for inputfile in file_args:
             sym.append("1")
         if not CASE:
             sym[0]=sym[0].upper()
-        if PYTHONERRORS:
+        try:
             val = int(sym[1])
-        else:
-            try:
-                val = int(sym[1])
-            except:
-                print("Error: Invalid value for symbol predefined on command line, "+value)
-                sys.exit(1)
+        except:
+            print("Error: Invalid value for symbol predefined on command line, " + value)
+            sys.exit(1)
         set_symbol(sym[0], int(sym[1]))
-
-    for picklefilename in importfiles:
-        with open(picklefilename, "rb") as f:
-            ImportSymbols = pickle.load(f)
-        for sym,val in list(ImportSymbols.items()):
-            symkey = sym if CASE else sym.upper()
-            symboltable[symkey]=val
-            if symkey != sym:
-                symbolcase[symkey] = sym
 
     firstpage=32
     firstpageoffset=16384
@@ -1952,20 +1653,6 @@ for inputfile in file_args:
             print(item[1])
         sys.exit(1)
 
-    printsymbols = {}
-    for symreg in listsymbols:
-        # add to printsymbols any pair from symboltable whose key matches symreg
-        for sym in symboltable:
-            if re.search(symreg, sym, 0 if CASE else re.IGNORECASE):
-                printsymbols[symbolcase.get(sym, sym)] = symboltable[sym]
-
-    if printsymbols != {}:
-        print(printsymbols)
-
-    if exportfile:
-        with open(exportfile, 'wb') as f:
-            pickle.dump({ symbolcase.get(k, k):v for k, v in symboltable.items() }, f, protocol=0)
-
     if mapfile:
         addrmap = {}
         for sym,count in sorted(list(symusetable.items()), key=lambda x: x[1]):
@@ -1982,12 +1669,6 @@ for inputfile in file_args:
             for addr,sym in sorted(addrmap.items()):
                 f.write("%04X=%s\n" % (addr,sym))
 
-    save_memory(memory, image=image, filename=os.path.splitext(os.path.basename(inputfile))[0])
-    if objectfile != "":
-        save_memory(memory, filename=objectfile)
-
-
-if outputfile != '':
-    save_disk_image(image, outputfile)
+    save_memory(memory, filename=outputfile)
 
 print("Finished")
