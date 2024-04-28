@@ -1,16 +1,33 @@
 #!/usr/bin/env python
 
-import math
+"""
+ASM80.PY a Z80 assembler focused on the Amstrad CPC. Based on pyz80
+pyz80 originally crafted by Andrew Collier, modified by Simon Owen
+ASM80.PY by Javier Garcia
 
-# TODO: define and assemble macro blocks
-# added FILESIZE("filename")
-# defs doesn't cause bytes to be written to output unless real data follows
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation in its version 3.
+
+This program is distributed in the hope that it will be useful
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""
+
+import getopt
+import sys, os, datetime
+import array
+import re
+import math # for use by expressions in source files
 
 def printusage():
-    print("pyz80 by Andrew Collier, modified by Simon Owen and finally")
-    print("by Javier Garcia to adjust it for the Amstrad CPC")
     print("Usage:")
-    print("     pyz80 (options) inputfile(s)")
+    print("     asm80 (options) inputfile(s)")
     print("Options:")
     print("-o outputfile")
     print("   save the resulting output code as a raw binary file at the given path")
@@ -28,13 +45,6 @@ def printusage():
     print("   treat arithmetic operators without precedence (as COMET itself did)")
     print("--intdiv")
     print("   force all division to give an integer result (as COMET itself did)")
-
-import getopt
-import sys, os, datetime
-import array
-import re
-import math # for use by expressions in source files
-
 
 def array_bytes(arr):
     return arr.tobytes() if hasattr(arr, "tobytes") else arr.tostring()

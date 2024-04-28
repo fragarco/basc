@@ -1,4 +1,8 @@
+#!/usr/bin/env python
+
 """
+CDT.PY by Javier Garcia
+
 Simple tool to add content to Amstrad CDT files.
 INFO about the CDT file format can be read here:
 https://www.cpcwiki.eu/index.php/Format:CDT_tape_image_file_format
@@ -9,6 +13,19 @@ https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual
 
 As per de documentation, timings are expected as Z80 clock ticks (T states)
 unless otherwise stated. 1 T state = (1/4000000)s (CPC Z80 ran at 4 Mhz)
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation in its version 3.
+
+This program is distributed in the hope that it will be useful
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 import sys

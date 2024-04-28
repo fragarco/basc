@@ -1,4 +1,8 @@
+#!/usr/bin/env python
+
 """
+DSK.PY by Javier Garcia
+
 Simple tool to manage Amstrad Data formated disks. Such format is defined as:
  * 180k single-sided.
  * 40 tracks of 9 512-byte sectors each.
@@ -10,6 +14,19 @@ INFO about the DSK file format can be read here:
 http://www.benchmarko.de/cpcemu/cpcdoc/chapter/cpcdoc7_e.html#I_FILE_STRUCTURE
 https://www.cpcwiki.eu/index.php/Format:DSK_disk_image_file_format
 https://sinclair.wiki.zxnet.co.uk/wiki/DSK_format
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation in its version 3.
+
+This program is distributed in the hope that it will be useful
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 import sys
