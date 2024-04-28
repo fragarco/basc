@@ -41,47 +41,12 @@ def printusage():
 def array_bytes(arr):
     return arr.tobytes() if hasattr(arr, "tobytes") else arr.tostring()
 
-def save_memory(memory, filename=None):
-    global firstpage,firstpageoffset
-
-    if firstpage==32:
-        # code was assembled without using a DUMP directive
-        firstpage = 1
-        firstpageoffset = 0
-
-    if memory[firstpage] != '':
+def save_memory(memory, filename):
+    contentlen = len(memory)
+    if contentlen > 0:
         # check that something has been assembled at all
-
-        filelength = (lastpage - firstpage + 1) * 16384
-
-        filelength -= firstpageoffset
-        filelength -= 16384-lastpageoffset
-
-        save_memory_to_file(filename, firstpage, firstpageoffset, filelength)
-
-def save_memory_to_file(filename, firstusedpage, firstpageoffset, filelength):
-    objfile = open(filename, 'wb')
-
-    flen = filelength
-    page = firstusedpage
-    offset = firstpageoffset
-
-    while flen:
-        wlen = min(16384-offset, flen)
-
-        if memory[page] != "":
-            pagestr = array_bytes(memory[page])
-            objfile.write(pagestr[offset:offset+wlen])
-
-        else:
-            # write wlen nothings into the file
-            objfile.seek(wlen,1)
-
-        flen -= wlen
-        page += 1
-        offset=0
-
-    objfile.close()
+        with open(filename, 'wb') as fd:
+            fd.write(memory)
 
 def warning(message):
     print(global_currentfile, 'warning:', message)
@@ -196,11 +161,9 @@ def get_symbol(sym):
 
 
 
-def parse_expression(arg, signed=0, byte=0, word=0, silenterror=0):
+def parse_expression(arg, signed=0, byte=0, word=0):
     if ',' in arg:
-        if silenterror:
-            return ''
-        fatal("Erroneous comma in expression"+arg)
+        fatal("Erroneous comma in expression" + arg)
 
     while 1:
         match = re.search('"(.)"', arg)
@@ -282,8 +245,6 @@ def parse_expression(arg, signed=0, byte=0, word=0, silenterror=0):
                             understood = 1
 
                         if not understood :
-                            if silenterror:
-                                return ''
                             fatal("Error in expression "+arg+": Undefined symbol "+expand_symbol(testsymbol))
 
                         testsymbol = parsestr
@@ -429,78 +390,29 @@ def condition(arg):
 
 
 def dump(bytes):
-    def initpage(page):
-        memory[page] = array.array('B')
-
-        memory[page].append(0)
-        while len(memory[page]) < 16384:
-            memory[page].extend(memory[page])
-
-    global dumppage, dumporigin, dumpspace_pending, lstcode, listingfile
-
-    if (p==2):
-        if dumpspace_pending > 0:
-            if memory[dumppage]=='':
-                initpage(dumppage)
-            dumporigin += dumpspace_pending
-            dumppage += dumporigin // 16384
-            dumporigin %= 16384
-            dumpspace_pending = 0
-
-        if memory[dumppage]=='':
-            initpage(dumppage)
+    global lstcode
+    if p == 2:
         lstcode = ""
         for b in bytes:
-           # if b<0 or b>255:
-           #     warning("Dump byte out of range")
-            memory[dumppage][dumporigin] = b
-            lstcode=lstcode+"%02X "%(b)
-            dumporigin += 1
-            if dumporigin == 16384:
-                dumporigin = 0
-                dumppage += 1
+            memory.append(b)
+            lstcode = lstcode + "%02X "%(b)
 
-                if memory[dumppage]=='':
-                    initpage(dumppage)
-
-def check_args(args,expected):
-    if args=='':
+def check_args(args, expected):
+    if args == '':
         received = 0
     else:
         received = len(args.split(','))
-    if expected!=received:
+    if expected != received:
         fatal("Opcode wrong number of arguments, expected "+str(expected)+" received "+str(args))
 
-def op_ORG(p,opargs):
+def op_ORG(p, opargs):
     global origin
-    check_args(opargs,1)
+    check_args(opargs, 1)
     origin = parse_expression(opargs, word=1)
     return 0
 
-def op_DUMP(p,opargs):
-    global dumppage, dumporigin, dumpused, firstpage, firstpageoffset, dumpspace_pending
-
-    if dumpused:
-        check_lastpage()
-    dumpused = True
-
-    dumpspace_pending = 0
-    if ',' in opargs:
-        page,offset = opargs.split(',',1)
-        offset = parse_expression(offset, word=1)
-        dumppage = parse_expression(page) + (offset//16384)
-        dumporigin = offset % 16384
-    else:
-        offset = parse_expression(opargs)
-        if (offset<16384):
-            fatal("DUMP value out of range")
-        dumppage = (offset//16384) - 1
-        dumporigin = offset % 16384
-
-    if ((dumppage*16384 + dumporigin) < (firstpage*16384 + firstpageoffset)):
-        firstpage = dumppage
-        firstpageoffset = dumporigin
-
+def op_DUMP(p, opargs):
+    # Not currently implemented. Maxam used it to write symbol information
     return 0
 
 def op_PRINT(p, opargs):
@@ -517,52 +429,21 @@ def op_PRINT(p, opargs):
     print(global_currentfile, "PRINT: ", ",".join(text))
     return 0
 
-def check_lastpage():
-    global lastpage, lastpageoffset
-    if dumppage > lastpage:
-        lastpage = dumppage
-        lastpageoffset = dumporigin
-    elif (dumppage == lastpage) and (dumporigin > lastpageoffset):
-        lastpageoffset = dumporigin
-
-def op_AUTOEXEC(p,opargs):
-    global autoexecpage, autoexecorigin
-    check_args(opargs,0)
-    if (p==2):
-        if (autoexecpage>0 or autoexecorigin>0):
-            fatal("AUTOEXEC may only be used once.")
-        autoexecpage = dumppage + 1 # basic type page numbering
-        autoexecorigin = dumporigin
-
-
-    return 0
-
-def op_EQU(p,opargs):
+def op_EQU(p, opargs):
     global symboltable
-    check_args(opargs,1)
-    if (symbol):
-        if opargs.upper().startswith("FOR") and (opargs[3].isspace() or opargs[3]=='('):
-            set_symbol(symbol, 0)
-
-            limit = parse_expression(opargs[4:].strip())
-            if limit < 1:
-                fatal("FOR range < 1 not allowed")
-            forstack.append( [symbol,global_currentfile,0,limit] )
-
-        else:
-            if p==1:
-                set_symbol(symbol, parse_expression(opargs, signed=1, silenterror=1))
-            else:
-                expr_result = parse_expression(opargs, signed=1)
-
-                existing = get_symbol(symbol)
-
-                if existing == '':
-                    set_symbol(symbol, expr_result)
-                elif existing != expr_result:
-                    fatal("Symbol "+expand_symbol(symbol)+": expected "+str(existing)+" but calculated "+str(expr_result)+", has this symbol been used twice?")
+    check_args(opargs, 2)
+    symbol, expr = opargs.split(',')
+    symbol = symbol.strip()
+    expr = expr.strip()
+    if p == 1:
+        set_symbol(symbol, parse_expression(expr, signed = 1))
     else:
-        warning("EQU without symbol name")
+        expr_result = parse_expression(expr, signed = 1)
+        existing = get_symbol(symbol)
+        if existing == '':
+            set_symbol(symbol, expr_result)
+        elif existing != expr_result:
+                fatal("Symbol " + expand_symbol(symbol) + ": expected " + str(existing) + " but calculated " + str(expr_result) + ", has this symbol been used twice?")
     return 0
 
 def op_NEXT(p,opargs):
@@ -599,14 +480,13 @@ def op_DS(p,opargs):
     return op_DEFS(p,opargs)
 
 def op_DEFS(p,opargs):
-    global dumppage, dumporigin, dumpspace_pending
-    check_args(opargs,1)
+    global dumpspace_pending
+    check_args(opargs, 1)
 
-    if opargs.upper().startswith("ALIGN") and (opargs[5].isspace() or opargs[5]=='('):
-        return op_ALIGN(p,opargs[5:].strip())
-
+    if opargs.upper().startswith("ALIGN") and (opargs[5].isspace() or opargs[5] == '('):
+        return op_ALIGN(p, opargs[5:].strip())
     s = parse_expression(opargs)
-    if s<0:
+    if s < 0:
         fatal("Allocated invalid space < 0 bytes ("+str(s)+")")
     dumpspace_pending += s
     return s
@@ -675,32 +555,7 @@ def op_DEFM(p,opargs):
                 # Of course, it would have helped if Comet had had sane quoting rules in the first place.
     return messagelen
 
-def op_MDAT(p,opargs):
-    global dumppage, dumporigin
-    match = re.search(r'\A\s*\"(.*)\"\s*\Z', opargs)
-    filename = os.path.join(global_path, match.group(1))
-
-    try:
-        mdatfile = open(filename,'rb')
-    except:
-        fatal("Unable to open file for reading: "+filename)
-
-    mdatfile.seek(0,2)
-    filelength = mdatfile.tell()
-    if p==1:
-        dumporigin += filelength
-        dumppage += dumporigin // 16384
-        dumporigin %= 16384
-    elif p==2:
-        mdatfile.seek(0)
-        mdatafilearray = array.array('B')
-        mdatafilearray.fromfile(mdatfile, filelength)
-        dump(mdatafilearray)
-
-    mdatfile.close()
-    return filelength
-
-def op_INCLUDE(p,opargs):
+def op_INCLUDE(p, opargs):
     global global_path, global_currentfile
     global include_stack
 
@@ -710,10 +565,7 @@ def op_INCLUDE(p,opargs):
     include_stack.append((global_path, global_currentfile))
     assembler_pass(p, filename)
     global_path, global_currentfile = include_stack.pop()
-
     return 0
-    # global origin has already been updated
-
 
 def op_FOR(p,opargs):
     args = opargs.split(',',1)
@@ -964,9 +816,6 @@ def op_registerorpair_arg_type(p,opargs,rinstr,rrinstr,step_per_register=8,step_
     return len(instr)
 
 def op_INC(p,opargs):
-    # Oh dear - COMET also used "INC" for INClude source file
-    if '"' in opargs:
-        return op_INCLUDE(p,opargs)
     return op_registerorpair_arg_type(p,opargs, 0x04, 0x03)
 
 def op_DEC(p,opargs):
@@ -1200,7 +1049,6 @@ def op_EX(p,opargs):
 
     if (p==2):
         dump(instr)
-
     return len(instr)
 
 def op_IN(p,opargs):
@@ -1237,13 +1085,13 @@ def op_OUT(p,opargs):
     return 2
 
 def op_LD(p,opargs):
-    check_args(opargs,2)
-    arg1,arg2 = opargs.split(',',1)
+    check_args(opargs, 2)
+    arg1 ,arg2 = opargs.split(',', 1)
 
     prefix, rr1 = double(arg1)
     if rr1 != -1:
         prefix2, rr2 = double(arg2)
-        if rr1==3 and rr2==2:
+        if rr1 == 3 and rr2 == 2:
             instr = prefix2
             instr.append(0xf9)
             dump(instr)
@@ -1252,12 +1100,12 @@ def op_LD(p,opargs):
         match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", arg2)
         if match:
             # ld rr, (nn)
-            if p==2:
+            if p == 2:
                 nn = parse_expression(match.group(1),word=1)
             else:
                 nn = 0
             instr = prefix
-            if rr1==2:
+            if rr1 == 2:
                 instr.extend([0x2a, nn%256, nn//256])
             else:
                 instr.extend([0xed, 0x4b + 16*rr1, nn%256, nn//256])
@@ -1265,7 +1113,7 @@ def op_LD(p,opargs):
             return len (instr)
         else:
             #ld rr, nn
-            if p==2:
+            if p == 2:
                 nn = parse_expression(arg2,word=1)
             else:
                 nn = 0
@@ -1378,7 +1226,6 @@ def op_LD(p,opargs):
                 dump([0x32, nn%256, nn//256])
             return 3
     fatal("LD args not understood - "+arg1+", "+arg2)
-
     return 1
 
 #ifstate=0: parse all code
@@ -1416,7 +1263,6 @@ def op_ELSE(p,opargs):
             ifstate = 1
     else:
         fatal("Mismatched ELSE")
-
     return 0
 
 def op_ENDIF(p,opargs):
@@ -1426,10 +1272,20 @@ def op_ENDIF(p,opargs):
     if len(ifstack) == 0:
         fatal("Mismatched ENDIF")
 
-    ifline,state = ifstack.pop()
+    _, state = ifstack.pop()
     ifstate = state
-
     return 0
+
+def process_label(p, label):
+    if len(label.split()) > 1:
+        fatal("Whitespace not allowed in label names:", label)
+
+    if label != "":
+        if p == 1:
+            set_symbol(label, origin, is_label = True)
+        elif get_symbol(label) != origin:
+            fatal("Label " + label + ": expected " + str(get_symbol(label)) + " but calculated " + str(origin) + ", has this label been used twice?")
+
 
 def assemble_instruction(p, line):
     match = re.match(r'^(\w+)(.*)', line)
@@ -1439,26 +1295,32 @@ def assemble_instruction(p, line):
     inst = match.group(1).upper()
     args = match.group(2).strip()
 
-    if (ifstate < 2) or inst in ('IF', 'ELSE', 'ENDIF'):
-        functioncall = 'op_'+inst+'(p,args)'
+    if (ifstate < 2) or inst in ("IF", "ELSE", "ENDIF"):
+        functioncall = "op_" + inst + "(p, args)"
         try:
             return eval(functioncall)
         except SystemExit as e:
             sys.exit(e)
         except:
-            fatal("Opcode not recognised")
+            if " EQU " in line.upper():
+                params = line.upper().split(' EQU ')
+                op_EQU(p, ','.join(params))
+            else:
+                # not recognized opcodes or directives are labels in Maxam dialect
+                process_label(p, inst)
+            return 0
     else:
         return 0
 
 def assembler_pass(p, inputfile):
-    global memory, symboltable, symusetable, labeltable, origin, dumppage, dumporigin, symbol
+    global memory, symboltable, symusetable, labeltable, origin, ifstate
     global global_currentfile, global_currentline, lstcode, listingfile
-    # file references are local, so assembler_pass can be called recursively (for op_INC)
+    # file references are local, so assembler_pass can be called recursively (op_INCLUDE)
     # but copied to a global identifier for warning printouts
     global global_path
 
-    global_currentfile="command line"
-    global_currentline="0"
+    global_currentfile = "command line"
+    global_currentline = "0"
 
     # just read the whole file into memory, it's not going to be huge (probably)
     # I'd prefer not to, but assembler_pass can be called recursively
@@ -1474,91 +1336,69 @@ def assembler_pass(p, inputfile):
         wholefile.insert(0, '') # prepend blank so line numbers are 1-based
         currentfile.close()
     except:
-        fatal("Couldn't open file "+this_currentfilename+" for reading")
-
+        fatal("Couldn't open file " + this_currentfilename + " for reading")
 
     consider_linenumber=0
     while consider_linenumber < len(wholefile):
-
         currentline = wholefile[consider_linenumber]
-
         global_currentline = currentline
-        global_currentfile = this_currentfilename+":"+str(consider_linenumber)
-            # write these every instruction because an INCLUDE may have overwritten them
+        global_currentfile = this_currentfilename + ":" + str(consider_linenumber)
+        # write these every instruction because an INCLUDE may have overwritten them
 
-        symbol = ''
-        opcode = ''
-        inquotes = ''
+        opcode = ""
+        inquotes = ""
         inquoteliteral = False
-        i = ""
-        for nexti in currentline+" ":
-            if (i==';' or i=='#') and not inquotes:
+        char = ""
+        for nextchar in currentline + " ":
+            if char == ';' and not inquotes:
+                # this is a comment
                 break
-            if i==':' and not inquotes:
-                symbol = opcode
-                opcode=''
-                i = ''
-
-            if i == '"':
+            if char == '"':
                 if not inquotes:
-                    inquotes = i
+                    inquotes = char
                 else:
-                    if (not inquoteliteral) and nexti=='"':
+                    if (not inquoteliteral) and nextchar == '"':
                         inquoteliteral = True
-
                     elif inquoteliteral:
                         inquoteliteral = False
-                        inquotes += i
-
+                        inquotes += char
                     else:
-                        inquotes += i
+                        inquotes += char
 
                         if inquotes == '""':
                             inquotes = '"""'
                         elif inquotes == '","':
                             inquotes = " 44 "
-                            i = ""
+                            char = ""
 
                         opcode += inquotes
                         inquotes = ""
             elif inquotes:
-                inquotes += i
+                inquotes += char
             else:
-                opcode += i
+                opcode += char
+            char = nextchar
 
-            i = nexti
-
-        symbol = symbol.strip()
         opcode = opcode.strip()
 
         if inquotes:
             fatal("Mismatched quotes")
-
-        if len( symbol.split()) > 1:
-            fatal("Whitespace not allowed in symbol name")
-
-        if (symbol and (opcode[0:3].upper() !="EQU") and (ifstate < 2)):
-            if p==1:
-                set_symbol(symbol, origin, is_label=True)
-            elif get_symbol(symbol) != origin:
-                fatal("Symbol "+symbol+": expected "+str(get_symbol(symbol))+" but calculated "+str(origin)+", has this symbol been used twice?")
-
+        
         if (opcode):
-            bytes = assemble_instruction(p,opcode)
+            bytes = assemble_instruction(p, opcode)
             if p > 1:
-              lstout="%04X %-13s\t%s"%(origin,lstcode,wholefile[consider_linenumber].rstrip())
-              lstcode=""
-              writelisting(lstout)
+                lstout = "%04X %-13s\t%s"%(origin, lstcode, wholefile[consider_linenumber].rstrip())
+                lstcode = ""
+                writelisting(lstout)
             origin = (origin + bytes) % 65536
         else:
-          if p > 1:
-            lstout="    %-13s\t%s"%("",wholefile[consider_linenumber].rstrip())
-            lstcode=""
-            writelisting(lstout)
+            if p > 1:
+                lstout="    %-13s\t%s"%("", wholefile[consider_linenumber].rstrip())
+                lstcode = ""
+                writelisting(lstout)
 
-        if global_currentfile.startswith(this_currentfilename+":") and int(global_currentfile.rsplit(':',1)[1]) != consider_linenumber:
+        if global_currentfile.startswith(this_currentfilename + ":") and int(global_currentfile.rsplit(':', 1)[1]) != consider_linenumber:
             consider_linenumber = int(global_currentfile.rsplit(':', 1)[1])
-
         consider_linenumber += 1
 
 
@@ -1622,7 +1462,7 @@ for inputfile in file_args:
     symbolcase = {}
     symusetable = {}
     labeltable = {}
-    memory = []
+    memory = bytearray()
     forstack=[]
     ifstack = []
     ifstate = 0
@@ -1639,32 +1479,12 @@ for inputfile in file_args:
             sys.exit(1)
         set_symbol(sym[0], int(sym[1]))
 
-    firstpage=32
-    firstpageoffset=16384
-    lastpage=-1
-    lastpageoffset=0
-
-    # always 32 memory pages, each a 16k array allocate-on-write
-    for initmemorypage in range(32):
-        memory.append('')
-
-    for p in 1, 2:
+    for p in [1, 2]:
         print("pass ", p, "...")
-
-        global_path=''
-        include_stack=[]
-
-        origin = 32768
-        dumppage = 1
-        dumporigin = 0
-        dumpspace_pending = 0
-        dumpused = False
-        autoexecpage = 0
-        autoexecorigin = 0
-
+        origin = 0x4000
+        global_path = ''
+        include_stack = []
         assembler_pass(p, inputfile)
-
-    check_lastpage()
 
     if len(ifstack) > 0:
         print("Error: Mismatched IF and ENDIF statements, too many IF")
@@ -1694,6 +1514,6 @@ for inputfile in file_args:
         for addr,sym in sorted(addrmap.items()):
             f.write("%04X=%s\n" % (addr,sym))
 
-    save_memory(memory, filename=outputfile)
+    save_memory(memory, outputfile)
 
 print("Finished")
