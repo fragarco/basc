@@ -33,8 +33,6 @@ def printusage():
     print("   save the resulting output code as a raw binary file at the given path")
     print("-d symbol=value")
     print("   Define a symbol with an integer value before parsing the source")
-    print("--case")
-    print("   treat source labels as case sensitive (as COMET itself did)")
     print("--nobodmas")
     print("   treat arithmetic operators without precedence (as COMET itself did)")
     print("--intdiv")
@@ -117,7 +115,7 @@ def file_and_stack(explicit_currentfile=None):
 
 def set_symbol(sym, value, explicit_currentfile=None, is_label=False):
     symorig = expand_symbol(sym)
-    sym = symorig if CASE else symorig.upper()
+    sym = symorig.upper()
 
     if sym[0]=='@':
         sym = sym + '@' + file_and_stack(explicit_currentfile=explicit_currentfile)
@@ -131,7 +129,7 @@ def set_symbol(sym, value, explicit_currentfile=None, is_label=False):
 
 def get_symbol(sym):
     symorig = expand_symbol(sym)
-    sym = symorig if CASE else symorig.upper()
+    sym = symorig.upper()
 
     if sym[0]=='@':
         if (sym + '@' + file_and_stack()) in symboltable:
@@ -723,14 +721,10 @@ def op_FOR(p,opargs):
     bytes = 0
     for iterate in range(limit):
         symboltable['FOR'] = iterate
-        if CASE:
-            symboltable['for'] = iterate
         bytes += assemble_instruction(p,args[1].strip())
 
     if limit != 0:
         del symboltable['FOR']
-        if CASE:
-            del symboltable['for']
 
     return bytes
 
@@ -1531,22 +1525,19 @@ def writelisting(line):
 ###########################################################################
 
 try:
-    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:ed:', ['help','case','nobodmas','intdiv'])
+    option_args, file_args = getopt.getopt(sys.argv[1:], 'ho:ed:', ['help','nobodmas','intdiv'])
     file_args = [os.path.normpath(x) for x in file_args]
 except getopt.GetoptError:
     printusage()
     sys.exit(2)
 
-inputfile = ''
-outputfile = ''
-
-CASE = False
 NOBODMAS = False
 INTDIV = False
-SPT = 10
 
-lstcode=""
-predefsymbols=[]
+inputfile = ""
+outputfile = ""
+lstcode = ""
+predefsymbols = []
 mapfile = None
 
 for option, value in option_args:
@@ -1559,9 +1550,6 @@ for option, value in option_args:
 
     if option in ['--nobodmas']:
         NOBODMAS = True # use no operator precedence
-
-    if option in ['--case']:
-        CASE = True
 
     if option in ['--intdiv']:
         INTDIV = True
@@ -1596,8 +1584,7 @@ for inputfile in file_args:
         sym=value.split('=',1)
         if len(sym)==1:
             sym.append("1")
-        if not CASE:
-            sym[0]=sym[0].upper()
+        sym[0]=sym[0].upper()
         try:
             val = int(sym[1])
         except:
@@ -1648,7 +1635,7 @@ for inputfile in file_args:
     addrmap = {}
     for sym, count in sorted(list(symusetable.items()), key=lambda x: x[1]):
         if sym in labeltable:
-            symkey = sym if CASE else sym.upper()
+            symkey = sym.upper()
             symorig = symbolcase.get(sym, sym)
 
             if symorig[0] == '@':
