@@ -229,8 +229,8 @@ def parse_expression(arg, signed=0, byte=0, word=0, silenterror=0):
     arg = re.sub(r'\b0X', '0x', arg) # darnit, this got capitalized
     arg = re.sub(r'\b0B', '0b', arg) # darnit, this got capitalized
 
-# if the argument contains letters at this point,
-# it's a symbol which needs to be replaced
+    # if the argument contains letters at this point,
+    # it's a symbol which needs to be replaced
 
     testsymbol=''
     argcopy = ''
@@ -333,11 +333,9 @@ def parse_expression(arg, signed=0, byte=0, word=0, silenterror=0):
         argcopy2=""
         for entry in aslist:
             argcopy2 += entry
-    #    print(argcopy,"->",argcopy2)
         argcopy = argcopy2
 
     narg = int(eval(argcopy))
-#    print(arg, " -> ",argcopy," == ",narg)
 
     if not signed:
         if byte:
@@ -352,7 +350,7 @@ def parse_expression(arg, signed=0, byte=0, word=0, silenterror=0):
     return narg
 
 def double(arg, allow_af_instead_of_sp=0, allow_af_alt=0, allow_index=1):
-# decode double register [bc, de, hl, sp][ix,iy] --special:  af af'
+    # decode double register [bc, de, hl, sp][ix,iy] --special:  af af'
     double_mapping = {'BC':([],0), 'DE':([],1), 'HL':([],2), 'SP':([],3), 'IX':([0xdd],2), 'IY':([0xfd],2), 'AF':([],5), "AF'":([],4) }
     rr = double_mapping.get(arg.strip().upper(),([],-1))
     if (rr[1]==3) and allow_af_instead_of_sp:
@@ -371,7 +369,7 @@ def double(arg, allow_af_instead_of_sp=0, allow_af_alt=0, allow_index=1):
     return rr
 
 def single(arg, allow_i=0, allow_r=0, allow_index=1, allow_offset=1, allow_half=1):
-#decode single register [b,c,d,e,h,l,(hl),a][(ix {+c}),(iy {+c})]
+    #decode single register [b,c,d,e,h,l,(hl),a][(ix {+c}),(iy {+c})]
     single_mapping = {'B':0, 'C':1, 'D':2, 'E':3, 'H':4, 'L':5, 'A':7, 'I':8, 'R':9, 'IXH':10, 'IXL':11, 'IYH':12, 'IYL':13 }
     m = single_mapping.get(arg.strip().upper(),-1)
     prefix=[]
@@ -425,7 +423,7 @@ def single(arg, allow_i=0, allow_r=0, allow_index=1, allow_offset=1, allow_half=
     return prefix,m,postfix
 
 def condition(arg):
-# decode condition [nz, z, nc, c, po, pe, p, m]
+    # decode condition [nz, z, nc, c, po, pe, p, m]
     condition_mapping = {'NZ':0, 'Z':1, 'NC':2, 'C':3, 'PO':4, 'PE':5, 'P':6, 'M':7 }
     return condition_mapping.get(arg.upper(),-1)
 
@@ -1601,8 +1599,8 @@ for inputfile in file_args:
     for initmemorypage in range(32):
         memory.append('')
 
-    for p in 1,2:
-        print("pass ",p,"...")
+    for p in 1, 2:
+        print("pass ", p, "...")
 
         global_path=''
         include_stack=[]
