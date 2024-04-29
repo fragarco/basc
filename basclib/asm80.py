@@ -63,19 +63,13 @@ class AsmContext:
             fatal("erroneous comma in expression " + arg)
 
         while 1:
+            # single characters in quotes to integer values
             match = re.search('"(.)"', arg)
             if match:
                 arg = arg.replace('"' + match.group(1) + '"', str(ord(match.group(1))))
             else:
                 break
 
-        while 1:
-            match = re.search(r'defined\s*\(\s*(.*?)\s*\)', arg, re.IGNORECASE)
-            if match:
-                result = (self.get_symbol(match.group(1)) != None)
-                arg = arg.replace(match.group(0),str(int(result)))
-            else:
-                break
         arg = arg.replace('@', '(' + str(self.origin) + ')') # storage location, next address
         arg = arg.replace('%', '0b') # syntax for binary literals
         arg = arg.replace(' MOD ', '%') # Maxam syntax for modulus
@@ -86,24 +80,24 @@ class AsmContext:
         arg = re.sub(r'\b0X', '0x', arg) 
         arg = re.sub(r'\b0B', '0b', arg)
 
-        # if the argument contains letters at this point,
+        # if the argument still contains letters at this point,
         # it's a symbol which needs to be replaced
         testsymbol=''
         argcopy = ''
         incurly = 0
         inquotes = False
 
-        for c in arg+' ':
+        for c in arg + " ":
             if c.isalnum() or c in '"_.{}' or incurly or inquotes:
                 testsymbol += c
-                if c=='{':
+                if c == '{':
                     incurly += 1
-                elif c=='}':
+                elif c == '}':
                     incurly -= 1
-                elif c=='"':
+                elif c == '"':
                     inquotes = not inquotes
             else:
-                if (testsymbol != ''):
+                if testsymbol != '':
                     if not testsymbol[0].isdigit():
                         result = self.get_symbol(testsymbol)
                         if (result != None):
@@ -137,7 +131,7 @@ class AsmContext:
                             if not understood :
                                 fatal("Error in expression " +
                                       arg +
-                                      ": Undefined symbol " +
+                                      ": undefined symbol " +
                                       self.expand_symbol(testsymbol))
 
                             testsymbol = parsestr
@@ -353,7 +347,7 @@ def op_PRINT(p, opargs):
         if expr.strip().startswith('"'):
             text.append(expr.strip().rstrip()[1:-1])
         else:
-            a = g_context.parse_expression(expr, silenterror=True)
+            a = g_context.parse_expression(expr)
             if a:
                 text.append(str(a))
             else:
@@ -425,69 +419,40 @@ def op_DEFS(p,opargs):
     dumpspace_pending += s
     return s
 
-def op_DB(p,opargs):
-    return op_DEFB(p,opargs)
-
-def op_DEFB(p,opargs):
-    s = opargs.split(',')
-    if (p==2):
-        for b in s:
-            byte=(g_context.parse_expression(b, byte=1, silenterror=1))
-            if byte=='':
-                fatal("Didn't understand DB or character constant "+b)
-            else:
-                g_context.store(p, [byte])
-    return len(s)
-
 def op_DW(p,opargs):
     return op_DEFW(p,opargs)
 
 def op_DEFW(p,opargs):
     s = opargs.split(',')
-    if (p==2):
+    if p == 2:
         for b in s:
             b=(g_context.parse_expression(b, word=1))
             g_context.store(p, [b%256, b//256])
     return 2*len(s)
 
-def op_DM(p,opargs):
-    return op_DEFM(p,opargs)
+def op_DM(p, opargs):
+    return op_DEFB(p,opargs)
 
-def op_DEFM(p,opargs):
-    messagelen = 0
-    if opargs.strip()=="44" or opargs=="(44)":
-        g_context.store(p, [44])
-        messagelen = 1
-    else:
-        matchstr = opargs
-        while matchstr.strip():
-            match = re.match(r'\s*\"(.*)\"(\s*,)?(.*)', matchstr)
-            if not match:
-                match = re.match(r'\s*([^,]*)(\s*,)?(.*)', matchstr)
-                byte=(g_context.parse_expression(match.group(1), byte=1, silenterror=1))
-                if byte=='':
-                    fatal("Didn't understand DM character constant "+match.group(1))
-                elif p==2:
-                    g_context.store(p, [byte])
+def op_DB(p, opargs):
+    return op_DEFB(p,opargs)
 
-                messagelen += 1
-            else:
-                message = list(match.group(1))
+def op_DEFM(p, opargs):
+   return op_DEFB(p, opargs)
 
-                if p==2:
-                    for i in message:
-                        g_context.store(p, [ord(i)])
-                messagelen += len(message)
-
-            matchstr = match.group(3)
-
-            if match.group(3) and not match.group(2):
-                matchstr = '""' + matchstr
-                # For cases such as  DEFM "message with a "" in it"
-                # I can only apologise for this, this is an artefact of my parsing quotes
-                # badly at the top level but it's too much for me to go back and refactor it all.
-                # Of course, it would have helped if Comet had had sane quoting rules in the first place.
-    return messagelen
+def op_DEFB(p, opargs):
+    args = opargs.split(',')
+    bytes = []
+    for arg in args:
+        texts = re.findall(r'"(.*?)"', arg)
+        if len(texts) == 0: texts = re.findall(r"'(.*?)'", arg)
+        if len(texts) > 0:
+            # text string between "" or ''
+            bytes = bytes + list(texts[0].encode('latin-1'))
+        else:
+            byte = 0 if p == 1 else g_context.parse_expression(arg, byte = 1)
+            bytes.append(byte)
+    if p == 2: g_context.store(p, bytes)
+    return len(bytes)
 
 def op_INCLUDE(p, opargs):
     match = re.search(r'\A\s*\"(.*)\"\s*\Z', opargs)
@@ -1213,7 +1178,7 @@ def assemble_instruction(p, line):
     # Lines must start by characters or underscord or '.'
     match = re.match(r'^(\.\w+|\w+)(.*)', line)
     if not match:
-        fatal("Lines must start with a letter, an underscord or '.'")
+        fatal("lines must start with a letter, an underscord or '.'")
 
     inst = match.group(1).upper()
     args = match.group(2).strip()
@@ -1237,8 +1202,7 @@ def assemble_instruction(p, line):
                     return assemble_instruction(p, extra_statements[1])
             return 0
         except Exception as e:
-            print("Unexpected error:", str(e))
-            sys.exit(1)
+            fatal("unexpected exception " + str(e))
     else:
         return 0
 
@@ -1265,73 +1229,33 @@ def assembler_pass(p, inputfile):
     except:
         fatal("Couldn't open file " + this_currentfilename + " for reading")
 
-    consider_linenumber = 0
-    while consider_linenumber < len(wholefile):
-        currentline = wholefile[consider_linenumber]
+    linenumber = 0
+    while linenumber < len(wholefile):
+        currentline = wholefile[linenumber]
         g_context.currentline = currentline
-        g_context.currentfile = this_currentfilename + ":" + str(consider_linenumber)
+        g_context.currentfile = this_currentfilename + ":" + str(linenumber)
         
         # One line can contain multiple statements separated by ':', for example
         # loop: jp loop
-        statements = currentline.split(':')
-        for statement in statements:
-            opcode = ""
-            inquotes = ""
-            inquoteliteral = False
-            char = ""
-            for nextchar in statement + " ":
-                if char == ';' and not inquotes:
-                    # this is a comment
-                    break
-                if char == '"':
-                    if not inquotes:
-                        inquotes = char
-                    else:
-                        if (not inquoteliteral) and nextchar == '"':
-                            inquoteliteral = True
-                        elif inquoteliteral:
-                            inquoteliteral = False
-                            inquotes += char
-                        else:
-                            inquotes += char
-
-                            if inquotes == '""':
-                                inquotes = '"""'
-                            elif inquotes == '","':
-                                inquotes = " 44 "
-                                char = ""
-
-                            opcode += inquotes
-                            inquotes = ""
-                elif inquotes:
-                    inquotes += char
-                else:
-                    opcode += char
-                char = nextchar
-
+        # lets remove comments and check for multi opcodes
+        filteredline = currentline.strip().split(';')[0]
+        statements = filteredline.split(':')
+        for opcode in statements:
             opcode = opcode.strip()
-
-            if inquotes:
-                fatal("Mismatched quotes")
+            if opcode == '': continue
+            if opcode.count('"') % 2 != 0 or opcode.count("'") % 2 != 0:
+                fatal("mismatched quotes")
             
-            if (opcode):
-                bytes = assemble_instruction(p, opcode)
-                if p > 1:
-                    lstout = "%06d  %04X  %-13s\t%s" % (
-                        consider_linenumber, g_context.origin, g_context.lstcode, statement.strip()
-                    )
-                    g_context.lstcode = ""
-                    g_context.write_listinfo(lstout)
-                g_context.origin = (g_context.origin + bytes) % 65536
-            else:
-                if p > 1:
-                    lstout = "    %-13s\t%s" % ("", wholefile[consider_linenumber].rstrip())
-                    g_context.lstcode = ""
-                    g_context.write_listinfo(lstout)
+            bytes = assemble_instruction(p, opcode)
+            if p > 1:
+                lstout = "%06d  %04X  %-13s\t%s" % (linenumber, g_context.origin, g_context.lstcode, opcode)
+                g_context.lstcode = ""
+                g_context.write_listinfo(lstout)
+            g_context.origin = (g_context.origin + bytes) % 65536
 
-        if g_context.currentfile.startswith(this_currentfilename + ":") and int(g_context.currentfile.rsplit(':', 1)[1]) != consider_linenumber:
-            consider_linenumber = int(g_context.currentfile.rsplit(':', 1)[1])
-        consider_linenumber += 1
+        if g_context.currentfile.startswith(this_currentfilename + ":") and int(g_context.currentfile.rsplit(':', 1)[1]) != linenumber:
+            linenumber = int(g_context.currentfile.rsplit(':', 1)[1])
+        linenumber += 1
 
 def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
     if (outputfile == None):
@@ -1348,7 +1272,7 @@ def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
         try:
             val = aux_int(sym[1])
         except:
-            print("Error: Invalid value for symbol predefined on command line, " + value)
+            print("error: invalid format for command-line symbol definition in" + value)
             sys.exit(1)
         g_context.set_symbol(sym[0], aux_int(sym[1]))
 
