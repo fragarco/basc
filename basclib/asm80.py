@@ -47,14 +47,200 @@ class AsmContext:
         self.currentline = ""
         self.lstcode = ""
 
+    def _save_mapfile(self, filename):
+        mapfile = os.path.splitext(filename)[0] + '.map'
+        with open(mapfile, 'w') as f:
+            f.write("symbols = {\n")
+            for sym, addr in sorted(self.symboltable.items()):
+                used = 'True' if sym in self.symusetable and self.symusetable[sym] > 1 else 'False'
+                f.write('  "%s": (%04X, %s),\n' % (sym, addr, used))
+            f.write("}\n")
+
+    def parse_expression(self, arg, signed=0, byte=0, word=0):
+        # WARNING: Maxam is supposed to evaluate operators from left to right (no operator precedence)
+        # here we do not do that, so this is a departure from Maxam
+        if ',' in arg:
+            fatal("erroneous comma in expression " + arg)
+
+        while 1:
+            match = re.search('"(.)"', arg)
+            if match:
+                arg = arg.replace('"' + match.group(1) + '"', str(ord(match.group(1))))
+            else:
+                break
+
+        while 1:
+            match = re.search(r'defined\s*\(\s*(.*?)\s*\)', arg, re.IGNORECASE)
+            if match:
+                result = (self.get_symbol(match.group(1)) != None)
+                arg = arg.replace(match.group(0),str(int(result)))
+            else:
+                break
+        arg = arg.replace('@', '(' + str(self.origin) + ')') # storage location, next address
+        arg = arg.replace('%', '0b') # syntax for binary literals
+        arg = arg.replace(' MOD ', '%') # Maxam syntax for modulus
+        arg = re.sub(r'&|#([0-9a-fA-F]+\b)', r'0x\g<1>', arg) # hex numbers must start with & or #
+
+        # fix capitalized hex or binary Python symbol
+        # don't do these except at the start of a token
+        arg = re.sub(r'\b0X', '0x', arg) 
+        arg = re.sub(r'\b0B', '0b', arg)
+
+        # if the argument contains letters at this point,
+        # it's a symbol which needs to be replaced
+        testsymbol=''
+        argcopy = ''
+        incurly = 0
+        inquotes = False
+
+        for c in arg+' ':
+            if c.isalnum() or c in '"_.{}' or incurly or inquotes:
+                testsymbol += c
+                if c=='{':
+                    incurly += 1
+                elif c=='}':
+                    incurly -= 1
+                elif c=='"':
+                    inquotes = not inquotes
+            else:
+                if (testsymbol != ''):
+                    if not testsymbol[0].isdigit():
+                        result = self.get_symbol(testsymbol)
+                        if (result != None):
+                            testsymbol = str(result)
+                        elif testsymbol[0] == '"' and testsymbol[-1]=='"':
+                            # string literal used in some expressions
+                            pass
+                        else:
+                            understood = 0
+                            # some of python's math expressions should be available to the parser
+                            if not understood and testsymbol.lower() != 'e':
+                                parsestr = 'math.' + testsymbol.lower()
+                                try:
+                                    eval(parsestr)
+                                    understood = 1
+                                except:
+                                    understood = 0
+
+                            if not understood:
+                                parsestr = 'random.' + testsymbol.lower()
+                                try:
+                                    eval(parsestr)
+                                    understood = 1
+                                except:
+                                    understood = 0
+
+                            if testsymbol in ["FILESIZE"]:
+                                parsestr = 'os.path.getsize'
+                                understood = 1
+
+                            if not understood :
+                                fatal("Error in expression " +
+                                      arg +
+                                      ": Undefined symbol " +
+                                      self.expand_symbol(testsymbol))
+
+                            testsymbol = parsestr
+
+                    elif testsymbol[0] == '0' and len(testsymbol) > 2 and testsymbol[1] == 'b':
+                        # binary literal
+                        literal = 0
+                        for digit in testsymbol[2:]:
+                            literal *= 2
+                            if digit == '1':
+                                literal += 1
+                            elif digit != '0':
+                                fatal("Invalid binary digit '" + digit + "'")
+                        testsymbol = str(literal)
+
+                    elif testsymbol[0]=='0' and len(testsymbol)>1 and testsymbol[1]!='x':
+                        # literals with leading zero would be treated as octal,
+                        decimal = testsymbol
+                        while decimal[0] == '0' and len(decimal) > 1:
+                            decimal = decimal[1:]
+                        testsymbol = decimal
+
+                    argcopy += testsymbol
+                    testsymbol = ''
+                argcopy += c
+
+        narg = int(eval(argcopy))
+
+        if not signed:
+            if byte:
+                if narg < -128 or narg > 255:
+                    warning ("unsigned byte value truncated from " + str(narg))
+                narg %= 256
+            elif word:
+                if narg < -32768 or narg > 65535:
+                    warning ("unsigned word value truncated from " + str(narg))
+                narg %= 65536
+        return narg
+
+    def expand_symbol(self, sym):
+        while 1:
+            match = re.search(r'\{([^\{\}]*)\}', sym)
+            if match:
+                value = self.parse_expression(match.group(1))
+                sym = sym.replace(match.group(0),str(value))
+            else:
+                break
+        return sym
+
+    def set_symbol(self, sym, value, is_label=False):
+        if is_label:
+            # In maxam labels can start with '.' to allow labels similar to opcodes
+            if len(sym) and sym[0] == '.': sym = sym[1:].upper()
+            self.labeltable[sym] = value
+        else:
+            symorig = self.expand_symbol(sym)
+            sym = symorig.upper()
+        self.symboltable[sym] = value
+
+    def get_symbol(self, sym):
+        symorig = self.expand_symbol(sym)
+        sym = symorig.upper()
+        if sym[0] == '.':
+            sym = sym[1:]
+        
+        if sym in self.symboltable:
+            self.symusetable[sym] = g_context.symusetable.get(sym,0)+1
+            return self.symboltable[sym]
+        return None
+
+    def process_label(self, p, label):
+        if len(label.split()) > 1:
+            fatal("whitespaces are not allowed in label names")
+
+        if label != "":
+            if p == 1:
+                self.set_symbol(label, self.origin, is_label = True)
+            elif self.get_symbol(label) != self.origin:
+                fatal("label address differs from previous stored value")
+
+    def store(self, p, bytes):
+        if p == 2:
+            self.lstcode = ""
+            for b in bytes:
+                self.memory.append(b)
+                self.lstcode = self.lstcode + "%02X " % (b)
+
+    def save_memory(self, filename):
+        contentlen = len(self.memory)
+        if contentlen > 0:
+            # check that something has been assembled at all
+            with open(filename, 'wb') as fd:
+                fd.write(self.memory)
+        self._save_mapfile(filename)
+
+    def write_listinfo(self, line):
+        if self.listingfile == None:
+            self.listingfile = open(os.path.splitext(self.outputfile)[0] + '.lst', "wt")
+        self.listingfile.write(line + "\n")
+
 g_context = AsmContext()
 
-def save_memory(memory, filename):
-    contentlen = len(memory)
-    if contentlen > 0:
-        # check that something has been assembled at all
-        with open(filename, 'wb') as fd:
-            fd.write(memory)
+
 
 def warning(message):
     print(g_context.currentfile, 'warning:', message)
@@ -62,160 +248,9 @@ def warning(message):
 
 def fatal(message):
     print(g_context.currentfile, 'error:', message)
-    print ('\t', g_context.currentline.strip())
+    print('\t', g_context.currentline.strip())
     sys.exit(1)
 
-def expand_symbol(sym):
-    while 1:
-        match = re.search(r'\{([^\{\}]*)\}', sym)
-        if match:
-            value = parse_expression(match.group(1))
-            sym = sym.replace(match.group(0),str(value))
-        else:
-            break
-    return sym
-
-def set_symbol(sym, value, is_label=False):
-    if is_label:
-        # In maxam labels can start with '.' to allow labels similar to opcodes
-        if len(sym) and sym[0] == '.': sym = sym[1:].upper()
-        g_context.labeltable[sym] = value
-    else:
-        symorig = expand_symbol(sym)
-        sym = symorig.upper()
-    g_context.symboltable[sym] = value
-
-def get_symbol(sym):
-    symorig = expand_symbol(sym)
-    sym = symorig.upper()
-    if sym[0] == '.':
-        sym = sym[1:]
-    
-    if sym in g_context.symboltable:
-        g_context.symusetable[sym] = g_context.symusetable.get(sym,0)+1
-        return g_context.symboltable[sym]
-    return None
-
-
-def parse_expression(arg, signed=0, byte=0, word=0):
-    # WARNING: Maxam is supposed to evaluate operators from left to right (no operator precedence)
-    # here we do not do that, so this is a departure from Maxam
-    if ',' in arg:
-        fatal("Erroneous comma in expression" + arg)
-
-    while 1:
-        match = re.search('"(.)"', arg)
-        if match:
-            arg = arg.replace('"' + match.group(1) + '"', str(ord(match.group(1))))
-        else:
-            break
-
-    while 1:
-        match = re.search(r'defined\s*\(\s*(.*?)\s*\)', arg, re.IGNORECASE)
-        if match:
-            result = (get_symbol(match.group(1)) != None)
-            arg = arg.replace(match.group(0),str(int(result)))
-        else:
-            break
-    arg = arg.replace('@', '(' + str(g_context.origin) + ')') # storage location, next address
-    arg = arg.replace('%', '0b') # syntax for binary literals
-    arg = arg.replace(' MOD ', '%') # Maxam syntax for modulus
-    arg = re.sub(r'&|#([0-9a-fA-F]+\b)', r'0x\g<1>', arg) # hex numbers must start with & or #
-
-    # fix capitalized hex or binary Python symbol
-    # don't do these except at the start of a token
-    arg = re.sub(r'\b0X', '0x', arg) 
-    arg = re.sub(r'\b0B', '0b', arg)
-
-    # if the argument contains letters at this point,
-    # it's a symbol which needs to be replaced
-
-    testsymbol=''
-    argcopy = ''
-
-    incurly = 0
-    inquotes = False
-
-    for c in arg+' ':
-        if c.isalnum() or c in '"_.{}' or incurly or inquotes:
-            testsymbol += c
-            if c=='{':
-                incurly += 1
-            elif c=='}':
-                incurly -= 1
-            elif c=='"':
-                inquotes = not inquotes
-        else:
-            if (testsymbol != ''):
-                if not testsymbol[0].isdigit():
-                    result = get_symbol(testsymbol)
-                    if (result != None):
-                        testsymbol = str(result)
-                    elif testsymbol[0] == '"' and testsymbol[-1]=='"':
-                        # string literal used in some expressions
-                        pass
-                    else:
-                        understood = 0
-                        # some of python's math expressions should be available to the parser
-                        if not understood and testsymbol.lower() != 'e':
-                            parsestr = 'math.'+testsymbol.lower()
-                            try:
-                                eval(parsestr)
-                                understood = 1
-                            except:
-                                understood = 0
-
-                        if not understood:
-                            parsestr = 'random.'+testsymbol.lower()
-                            try:
-                                eval(parsestr)
-                                understood = 1
-                            except:
-                                understood = 0
-
-                        if testsymbol in ["FILESIZE"]:
-                            parsestr = 'os.path.getsize'
-                            understood = 1
-
-                        if not understood :
-                            fatal("Error in expression " + arg + ": Undefined symbol " + expand_symbol(testsymbol))
-
-                        testsymbol = parsestr
-
-                elif testsymbol[0] == '0' and len(testsymbol) > 2 and testsymbol[1] == 'b':
-                    # binary literal
-                    literal = 0
-                    for digit in testsymbol[2:]:
-                        literal *= 2
-                        if digit == '1':
-                            literal += 1
-                        elif digit != '0':
-                            fatal("Invalid binary digit '" + digit + "'")
-                    testsymbol = str(literal)
-
-                elif testsymbol[0]=='0' and len(testsymbol)>1 and testsymbol[1]!='x':
-                    # literals with leading zero would be treated as octal,
-                    decimal = testsymbol
-                    while decimal[0] == '0' and len(decimal) > 1:
-                        decimal = decimal[1:]
-                    testsymbol = decimal
-
-                argcopy += testsymbol
-                testsymbol = ''
-            argcopy += c
-
-    narg = int(eval(argcopy))
-
-    if not signed:
-        if byte:
-            if narg < -128 or narg > 255:
-                warning ("Unsigned byte value truncated from "+str(narg))
-            narg %= 256
-        elif word:
-            if narg < -32768 or narg > 65535:
-                warning ("Unsigned word value truncated from "+str(narg))
-            narg %= 65536
-    return narg
 
 def double(arg, allow_af_instead_of_sp=0, allow_af_alt=0, allow_index=1):
     # decode double register [bc, de, hl, sp][ix,iy] --special:  af af'
@@ -281,7 +316,7 @@ def single(p, arg, allow_i=0, allow_r=0, allow_index=1, allow_offset=1, allow_ha
                 m = 6
                 prefix = [0xdd] if match.group(1).lower() == 'ix' else [0xfd]
                 if p == 2:
-                    offset = parse_expression(match.group(2), byte=1, signed=1)
+                    offset = g_context.parse_expression(match.group(2), byte=1, signed=1)
                     if offset < -128 or offset > 127:
                         fatal ("invalid index offset: "+str(offset))
                     postfix = [(offset + 256) % 256]
@@ -295,14 +330,6 @@ def condition(arg):
     condition_mapping = {'NZ':0, 'Z':1, 'NC':2, 'C':3, 'PO':4, 'PE':5, 'P':6, 'M':7 }
     return condition_mapping.get(arg.upper(),-1)
 
-
-def dump(p, bytes):
-    if p == 2:
-        g_context.lstcode = ""
-        for b in bytes:
-            g_context.memory.append(b)
-            g_context.lstcode = g_context.lstcode + "%02X " % (b)
-
 def check_args(args, expected):
     if args == '':
         received = 0
@@ -312,9 +339,8 @@ def check_args(args, expected):
         fatal("Opcode wrong number of arguments, expected "+str(expected)+" received "+str(args))
 
 def op_ORG(p, opargs):
-    global origin
     check_args(opargs, 1)
-    origin = parse_expression(opargs, word=1)
+    g_context.origin = g_context.parse_expression(opargs, word=1)
     return 0
 
 def op_DUMP(p, opargs):
@@ -327,7 +353,7 @@ def op_PRINT(p, opargs):
         if expr.strip().startswith('"'):
             text.append(expr.strip().rstrip()[1:-1])
         else:
-            a = parse_expression(expr, silenterror=True)
+            a = g_context.parse_expression(expr, silenterror=True)
             if a:
                 text.append(str(a))
             else:
@@ -342,14 +368,18 @@ def op_EQU(p, opargs):
     symbol = symbol.strip()
     expr = expr.strip()
     if p == 1:
-        set_symbol(symbol, parse_expression(expr, signed = 1))
+        g_context.set_symbol(symbol, g_context.parse_expression(expr, signed = 1))
     else:
-        expr_result = parse_expression(expr, signed = 1)
-        existing = get_symbol(symbol)
+        expr_result = g_context.parse_expression(expr, signed = 1)
+        existing = g_context.get_symbol(symbol)
         if existing == '':
-            set_symbol(symbol, expr_result)
+            g_context.set_symbol(symbol, expr_result)
         elif existing != expr_result:
-                fatal("Symbol " + expand_symbol(symbol) + ": expected " + str(existing) + " but calculated " + str(expr_result) + ", has this symbol been used twice?")
+                fatal("Symbol " +
+                      g_context.expand_symbol(symbol) +
+                      ": expected " + str(existing) +
+                      " but calculated " + str(expr_result) +
+                      ", has this symbol been used twice?")
     return 0
 
 def op_NEXT(p,opargs):
@@ -359,7 +389,7 @@ def op_NEXT(p,opargs):
         fatal("NEXT symbol " + opargs + " doesn't match FOR: expected " + foritem[0])
     foritem[2] += 1
 
-    set_symbol(foritem[0], foritem[2])
+    g_context.set_symbol(foritem[0], foritem[2])
 
     if foritem[2] < foritem[3]:
         g_context.currentfile = foritem[1]
@@ -370,13 +400,13 @@ def op_ALIGN(p,opargs):
     global dumpspace_pending
     check_args(opargs,1)
 
-    align = parse_expression(opargs)
+    align = g_context.parse_expression(opargs)
     if align<1:
         fatal("Invalid alignment")
     elif (align & (-align)) != align:
         fatal("Alignment is not a power of 2")
 
-    s = (align - origin%align)%align
+    s = (align - g_context.origin % align) % align
     dumpspace_pending += s
     return s
 
@@ -389,7 +419,7 @@ def op_DEFS(p,opargs):
 
     if opargs.upper().startswith("ALIGN") and (opargs[5].isspace() or opargs[5] == '('):
         return op_ALIGN(p, opargs[5:].strip())
-    s = parse_expression(opargs)
+    s = g_context.parse_expression(opargs)
     if s < 0:
         fatal("Allocated invalid space < 0 bytes ("+str(s)+")")
     dumpspace_pending += s
@@ -402,11 +432,11 @@ def op_DEFB(p,opargs):
     s = opargs.split(',')
     if (p==2):
         for b in s:
-            byte=(parse_expression(b, byte=1, silenterror=1))
+            byte=(g_context.parse_expression(b, byte=1, silenterror=1))
             if byte=='':
                 fatal("Didn't understand DB or character constant "+b)
             else:
-                dump(p, [byte])
+                g_context.store(p, [byte])
     return len(s)
 
 def op_DW(p,opargs):
@@ -416,8 +446,8 @@ def op_DEFW(p,opargs):
     s = opargs.split(',')
     if (p==2):
         for b in s:
-            b=(parse_expression(b, word=1))
-            dump(p, [b%256, b//256])
+            b=(g_context.parse_expression(b, word=1))
+            g_context.store(p, [b%256, b//256])
     return 2*len(s)
 
 def op_DM(p,opargs):
@@ -426,7 +456,7 @@ def op_DM(p,opargs):
 def op_DEFM(p,opargs):
     messagelen = 0
     if opargs.strip()=="44" or opargs=="(44)":
-        dump ([44])
+        g_context.store(p, [44])
         messagelen = 1
     else:
         matchstr = opargs
@@ -434,11 +464,11 @@ def op_DEFM(p,opargs):
             match = re.match(r'\s*\"(.*)\"(\s*,)?(.*)', matchstr)
             if not match:
                 match = re.match(r'\s*([^,]*)(\s*,)?(.*)', matchstr)
-                byte=(parse_expression(match.group(1), byte=1, silenterror=1))
+                byte=(g_context.parse_expression(match.group(1), byte=1, silenterror=1))
                 if byte=='':
                     fatal("Didn't understand DM character constant "+match.group(1))
                 elif p==2:
-                    dump(p, [byte])
+                    g_context.store(p, [byte])
 
                 messagelen += 1
             else:
@@ -446,7 +476,7 @@ def op_DEFM(p,opargs):
 
                 if p==2:
                     for i in message:
-                        dump ([ord(i)])
+                        g_context.store(p, [ord(i)])
                 messagelen += len(message)
 
             matchstr = match.group(3)
@@ -470,7 +500,7 @@ def op_INCLUDE(p, opargs):
 
 def op_FOR(p,opargs):
     args = opargs.split(',',1)
-    limit = parse_expression(args[0])
+    limit = g_context.parse_expression(args[0])
     bytes = 0
     for iterate in range(limit):
         symboltable['FOR'] = iterate
@@ -484,13 +514,13 @@ def op_FOR(p,opargs):
 def op_noargs_type(p,opargs,instr):
     check_args(opargs,0)
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_ASSERT(p,opargs):
     check_args(opargs,1)
     if (p==2):
-        value = parse_expression(opargs)
+        value = g_context.parse_expression(opargs)
         if value == 0:
             fatal("Assertion failed ("+opargs+")")
     return 0
@@ -628,7 +658,7 @@ def op_cbshifts_type(p,opargs,offset,step_per_register=1):
             instr.append(offset + step_per_register*r)
 
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_RLC(p,opargs):
@@ -671,7 +701,7 @@ def op_register_arg_type(p,opargs,offset,ninstr,step_per_register=1):
 
         instr.extend(ninstr)
         if (p==2):
-            n = parse_expression(opargs, byte=1)
+            n = g_context.parse_expression(opargs, byte=1)
         else:
             n = 0
         instr.append(n)
@@ -679,7 +709,7 @@ def op_register_arg_type(p,opargs,offset,ninstr,step_per_register=1):
         instr.append(offset + step_per_register*r)
     instr.extend(post)
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_SUB(p,opargs):
@@ -713,7 +743,7 @@ def op_registerorpair_arg_type(p,opargs,rinstr,rrinstr,step_per_register=8,step_
         instr.append(rinstr + step_per_register*r)
         instr.extend(post)
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_INC(p,opargs):
@@ -739,7 +769,7 @@ def op_add_type(p,opargs,rinstr,ninstr,rrinstr,step_per_register=1,step_per_pair
 
             instr.extend(ninstr)
             if (p==2):
-                n = parse_expression(args[-1], byte=1)
+                n = g_context.parse_expression (args[-1], byte=1)
             else:
                 n = 0
             instr.append(n)
@@ -765,7 +795,7 @@ def op_add_type(p,opargs,rinstr,ninstr,rrinstr,step_per_register=1,step_per_pair
         instr[-1] += step_per_pair*rr2
 
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_ADD(p,opargs):
@@ -780,7 +810,7 @@ def op_SBC(p,opargs):
 def op_bit_type(p,opargs,offset):
     check_args(opargs,2)
     arg1,arg2 = opargs.split(',',1)
-    b = parse_expression(arg1)
+    b = g_context.parse_expression(arg1)
     if b>7 or b<0:
         fatal ("argument out of range")
     pre,r,post = single(p, arg2,allow_half=0)
@@ -791,7 +821,7 @@ def op_bit_type(p,opargs,offset):
     instr.extend(post)
     instr.append(offset + r + 8*b)
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_BIT(p,opargs):
@@ -812,7 +842,7 @@ def op_pushpop_type(p,opargs,offset):
     else:
         instr.append(offset + 16 * rr)
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_POP(p,opargs):
@@ -836,9 +866,9 @@ def op_jumpcall_type(p,opargs,offset, condoffset):
         fatal ("Illegal indirection")
 
     if (p==2):
-        nn = parse_expression(args[-1],word=1)
+        nn = g_context.parse_expression(args[-1],word=1)
         instr.extend([nn%256, nn//256])
-        dump(p, instr)
+        g_context.store(p, instr)
 
     return 3
 
@@ -849,7 +879,7 @@ def op_JP(p,opargs):
             instr = prefix
             instr.append(0xe9)
             if (p==2):
-                dump(p, instr)
+                g_context.store(p, instr)
             return len(instr)
     return op_jumpcall_type(p,opargs, 0xc3, 0xc2)
 
@@ -859,11 +889,11 @@ def op_CALL(p,opargs):
 def op_DJNZ(p,opargs):
     check_args(opargs,1)
     if (p==2):
-        target = parse_expression(opargs,word=1)
-        displacement = target - (origin + 2)
+        target = g_context.parse_expression(opargs,word=1)
+        displacement = target - (g_context.origin + 2)
         if displacement > 127 or displacement < -128:
-            fatal ("Displacement from "+str(origin)+" to "+str(target)+" is out of range")
-        dump(p, [0x10,(displacement+256)%256])
+            fatal ("Displacement from "+str(g_context.origin)+" to "+str(target)+" is out of range")
+        g_context.store(p, [0x10,(displacement+256)%256])
 
     return 2
 
@@ -879,47 +909,47 @@ def op_JR(p,opargs):
             fatal ("Invalid condition for JR")
         instr = 0x20 + 8*cond
     if (p==2):
-        target = parse_expression(args[-1],word=1)
-        displacement = target - (origin + 2)
+        target = g_context.parse_expression(args[-1],word=1)
+        displacement = target - (g_context.origin + 2)
         if displacement > 127 or displacement < -128:
-            fatal ("Displacement from "+str(origin)+" to "+str(target)+" is out of range")
-        dump(p, [instr,(displacement+256)%256])
-
+            fatal ("Displacement from " + str(g_context.origin) +
+                   " to " + str(target)+" is out of range")
+        g_context.store(p, [instr,(displacement+256)%256])
     return 2
 
 def op_RET(p,opargs):
     if opargs=='':
         if (p==2):
-            dump(p, [0xc9])
+            g_context.store(p, [0xc9])
     else:
         check_args(opargs,1)
         cond = condition(opargs)
         if cond == -1:
             fatal ("Expected condition, received "+opargs)
         if (p==2):
-            dump(p, [0xc0 + 8*cond])
+            g_context.store(p, [0xc0 + 8*cond])
     return 1
 
 def op_IM(p,opargs):
     check_args(opargs,1)
     if (p==2):
-        mode = parse_expression(opargs)
+        mode = g_context.parse_expression(opargs)
         if (mode>2) or (mode<0):
             fatal ("argument out of range")
         if mode > 0:
             mode += 1
 
-        dump(p, [0xed, 0x46 + 8*mode])
+        g_context.store(p, [0xed, 0x46 + 8*mode])
     return 2
 
 def op_RST(p,opargs):
     check_args(opargs,1)
     if (p==2):
-        vector = parse_expression(opargs)
+        vector = g_context.parse_expression(opargs)
         if (vector>0x38) or (vector<0) or ((vector%8) != 0):
             fatal ("argument out of range or doesn't divide by 8")
 
-        dump(p, [0xc7 + vector])
+        g_context.store(p, [0xc7 + vector])
     return 1
 
 def op_EX(p,opargs):
@@ -949,7 +979,7 @@ def op_EX(p,opargs):
             fatal("Can't exchange "+args[0]+" with "+args[1])
 
     if (p==2):
-        dump(p, instr)
+        g_context.store(p, instr)
     return len(instr)
 
 def op_IN(p,opargs):
@@ -958,14 +988,14 @@ def op_IN(p,opargs):
     if (p==2):
         pre,r,post = single(p, args[0], allow_index=0, allow_half=0)
         if r!=-1 and r!=6 and re.search(r"\A\s*\(\s*C\s*\)\s*\Z", args[1], re.IGNORECASE):
-            dump(p, [0xed, 0x40+8*r])
+            g_context.store(p, [0xed, 0x40+8*r])
         elif r==7:
             match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", args[1])
             if match==None:
                 fatal("No expression in "+args[1])
 
-            n = parse_expression(match.group(1))
-            dump(p, [0xdb, n])
+            n = g_context.parse_expression(match.group(1))
+            g_context.store(p, [0xdb, n])
         else:
             fatal("Invalid argument")
     return 2
@@ -976,11 +1006,11 @@ def op_OUT(p,opargs):
     if (p==2):
         pre,r,post = single(p, args[1], allow_index=0, allow_half=0)
         if r!=-1 and r!=6 and re.search(r"\A\s*\(\s*C\s*\)\s*\Z", args[0], re.IGNORECASE):
-            dump(p, [0xed, 0x41+8*r])
+            g_context.store(p, [0xed, 0x41+8*r])
         elif r==7:
             match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", args[0])
-            n = parse_expression(match.group(1))
-            dump(p, [0xd3, n])
+            n = g_context.parse_expression(match.group(1))
+            g_context.store(p, [0xd3, n])
         else:
             fatal("Invalid argument")
     return 2
@@ -995,14 +1025,14 @@ def op_LD(p,opargs):
         if rr1 == 3 and rr2 == 2:
             instr = prefix2
             instr.append(0xf9)
-            dump(p, instr)
+            g_context.store(p, instr)
             return len(instr)
 
         match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", arg2)
         if match:
             # ld rr, (nn)
             if p == 2:
-                nn = parse_expression(match.group(1),word=1)
+                nn = g_context.parse_expression(match.group(1),word=1)
             else:
                 nn = 0
             instr = prefix
@@ -1010,17 +1040,17 @@ def op_LD(p,opargs):
                 instr.extend([0x2a, nn%256, nn//256])
             else:
                 instr.extend([0xed, 0x4b + 16*rr1, nn%256, nn//256])
-            dump(p, instr)
+            g_context.store(p, instr)
             return len (instr)
         else:
             #ld rr, nn
             if p == 2:
-                nn = parse_expression(arg2,word=1)
+                nn = g_context.parse_expression(arg2,word=1)
             else:
                 nn = 0
             instr = prefix
             instr.extend([0x01 + 16*rr1, nn%256, nn//256])
-            dump(p, instr)
+            g_context.store(p, instr)
             return len (instr)
 
     prefix, rr2 = double(arg2)
@@ -1029,7 +1059,7 @@ def op_LD(p,opargs):
         if match:
             # ld (nn), rr
             if p==2:
-                nn = parse_expression(match.group(1))
+                nn = g_context.parse_expression(match.group(1))
             else:
                 nn = 0
             instr = prefix
@@ -1037,7 +1067,7 @@ def op_LD(p,opargs):
                 instr.extend([0x22, nn%256, nn//256])
             else:
                 instr.extend([0xed, 0x43 + 16*rr2, nn%256, nn//256])
-            dump(p, instr)
+            g_context.store(p, instr)
             return len (instr)
 
     prefix1,r1,postfix1 = single(p, arg1, allow_i=1, allow_r=1)
@@ -1047,17 +1077,17 @@ def op_LD(p,opargs):
             if (r1 > 7) or (r2 > 7):
                 if r1==7:
                     if r2==8:
-                        dump(p, [0xed,0x57])
+                        g_context.store(p, [0xed,0x57])
                         return 2
                     elif r2==9:
-                        dump(p, [0xed,0x5f])
+                        g_context.store(p, [0xed,0x5f])
                         return 2
                 if r2==7:
                     if r1==8:
-                        dump(p, [0xed,0x47])
+                        g_context.store(p, [0xed,0x47])
                         return 2
                     elif r1==9:
-                        dump(p, [0xed,0x4f])
+                        g_context.store(p, [0xed,0x4f])
                         return 2
                 fatal("Invalid argument")
 
@@ -1079,7 +1109,7 @@ def op_LD(p,opargs):
             instr.append(0x40 + 8*r1 + r2)
             instr.extend(postfix1)
             instr.extend(postfix2)
-            dump(p, instr)
+            g_context.store(p, instr)
             return len(instr)
 
         else:
@@ -1087,44 +1117,44 @@ def op_LD(p,opargs):
                 fatal("Invalid argument")
 
             if r1==7 and re.search(r"\A\s*\(\s*BC\s*\)\s*\Z", arg2, re.IGNORECASE):
-                dump(p, [0x0a])
+                g_context.store(p, [0x0a])
                 return 1
             if r1==7 and re.search(r"\A\s*\(\s*DE\s*\)\s*\Z", arg2, re.IGNORECASE):
-                dump(p, [0x1a])
+                g_context.store(p, [0x1a])
                 return 1
             match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", arg2)
             if match:
                 if r1 != 7:
                     fatal("Illegal indirection")
                 if p==2:
-                    nn = parse_expression(match.group(1), word=1)
-                    dump(p, [0x3a, nn%256, nn//256])
+                    nn = g_context.parse_expression(match.group(1), word=1)
+                    g_context.store(p, [0x3a, nn%256, nn//256])
                 return 3
 
             instr = prefix1
             instr.append(0x06 + 8*r1)
             instr.extend(postfix1)
             if (p==2):
-                n = parse_expression(arg2, byte=1)
+                n = g_context.parse_expression(arg2, byte=1)
             else:
                 n = 0
             instr.append(n)
-            dump(p, instr)
+            g_context.store(p, instr)
             return len(instr)
 
     elif r2==7:
         # ld (bc/de/nn),a
         if re.search(r"\A\s*\(\s*BC\s*\)\s*\Z", arg1, re.IGNORECASE):
-            dump(p, [0x02])
+            g_context.store(p, [0x02])
             return 1
         if re.search(r"\A\s*\(\s*DE\s*\)\s*\Z", arg1, re.IGNORECASE):
-            dump(p, [0x12])
+            g_context.store(p, [0x12])
             return 1
         match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", arg1)
         if match:
             if p==2:
-                nn = parse_expression(match.group(1), word=1)
-                dump(p, [0x32, nn%256, nn//256])
+                nn = g_context.parse_expression(match.group(1), word=1)
+                g_context.store(p, [0x32, nn%256, nn//256])
             return 3
     fatal("LD args not understood - "+arg1+", "+arg2)
     return 1
@@ -1140,7 +1170,7 @@ def op_IF(p,opargs):
 
     ifstack.append((g_context.currentfile,ifstate))
     if ifstate < 2:
-        cond = parse_expression(opargs)
+        cond = g_context.parse_expression(opargs)
         if cond:
             ifstate = 1
         else:
@@ -1155,7 +1185,7 @@ def op_ELSE(p,opargs):
         ifstate = 3
     elif ifstate==2:
         if opargs.upper().startswith("IF"):
-            cond = parse_expression(opargs[2:].strip())
+            cond = g_context.parse_expression(opargs[2:].strip())
             if cond:
                 ifstate = 1
             else:
@@ -1177,16 +1207,7 @@ def op_ENDIF(p,opargs):
     ifstate = state
     return 0
 
-def process_label(p, label):
-    if len(label.split()) > 1:
-        fatal("Whitespace not allowed in label names:", label)
-
-    if label != "":
-        if p == 1:
-            set_symbol(label, g_context.origin, is_label = True)
-        elif get_symbol(label) != g_context.origin:
-            fatal("label " + label + " expected " + str(get_symbol(label)) + " but calculated " + str(g_context.origin) + ", has this label been used twice?")
-
+###########################################################################
 
 def assemble_instruction(p, line):
     # Lines must start by characters or underscord or '.'
@@ -1210,7 +1231,7 @@ def assemble_instruction(p, line):
             else:
                 # not recognized opcodes or directives are labels in Maxam dialect BUT they
                 # can go with opcodes separated by spaces in the same line: loop jp loop
-                process_label(p, inst.rstrip())
+                g_context.process_label(p, inst.rstrip())
                 extra_statements = line.split(' ', 1)
                 if len(extra_statements) > 1:
                     return assemble_instruction(p, extra_statements[1])
@@ -1300,24 +1321,17 @@ def assembler_pass(p, inputfile):
                         consider_linenumber, g_context.origin, g_context.lstcode, statement.strip()
                     )
                     g_context.lstcode = ""
-                    writelisting(lstout)
+                    g_context.write_listinfo(lstout)
                 g_context.origin = (g_context.origin + bytes) % 65536
             else:
                 if p > 1:
                     lstout = "    %-13s\t%s" % ("", wholefile[consider_linenumber].rstrip())
                     g_context.lstcode = ""
-                    writelisting(lstout)
+                    g_context.write_listinfo(lstout)
 
         if g_context.currentfile.startswith(this_currentfilename + ":") and int(g_context.currentfile.rsplit(':', 1)[1]) != consider_linenumber:
             consider_linenumber = int(g_context.currentfile.rsplit(':', 1)[1])
         consider_linenumber += 1
-
-def writelisting(line):
-    if g_context.listingfile == None:
-        g_context.listingfile = open(os.path.splitext(g_context.outputfile)[0] + '.lst', "wt")
-    g_context.listingfile.write(line+"\n")
-
-###########################################################################
 
 def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
     if (outputfile == None):
@@ -1336,7 +1350,7 @@ def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
         except:
             print("Error: Invalid value for symbol predefined on command line, " + value)
             sys.exit(1)
-        set_symbol(sym[0], aux_int(sym[1]))
+        g_context.set_symbol(sym[0], aux_int(sym[1]))
 
     print("Generating", outputfile)
     for p in [1, 2]:
@@ -1356,16 +1370,7 @@ def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
             print(item[1])
         sys.exit(1)
 
-    # dump map file
-    mapfile = os.path.splitext(outputfile)[0] + '.map'
-    with open(mapfile, 'w') as f:
-        f.write("symbols = {\n")
-        for sym, addr in sorted(g_context.symboltable.items()):
-            used = 'True' if sym in g_context.symusetable and g_context.symusetable[sym] > 1 else 'False'
-            f.write('  "%s": (%04X, %s),\n' % (sym, addr, used))
-        f.write("}\n")
-    
-    save_memory(g_context.memory, outputfile)
+    g_context.save_memory(outputfile)
 
 def aux_int(param):
     """
