@@ -561,6 +561,26 @@ def op_READ(p, opargs):
     g_context.currentfile = g_context.include_stack.pop()
     return 0
 
+def op_INCBIN(p, opargs):
+    # WinAPE directive to include the content of a binary file
+    # incbin "file", offset, size
+    path = re.search(r'(?<=["\'])(.*?)(?=["\'])', opargs)
+    if path == None or os.path.exists(path.group(0)):
+        fatal("wrong path specified in the INCBIN directive")
+
+    filename = os.path.join(os.path.dirname(g_context.currentfile), path.group(0))
+    args = opargs.split(',')
+    offset = 0 if len(args) < 2 else g_context.parse_expression(args[1].strip())
+    try:
+        with open(filename, 'rb') as fd:
+            content = fd.read()
+        nbytes = len(content) - offset if len(args) < 3 else g_context.parse_expression(args[2].strip())
+    except:
+        fatal("cannot read the content of the binary file")
+    content = content[offset: offset + nbytes]
+    g_context.store(p, content)
+    return len(content)
+
 def op_FOR(p,opargs):
     args = opargs.split(',',1)
     limit = g_context.parse_expression(args[0])
