@@ -253,7 +253,7 @@ class ImgConverter:
             color = CPC_FW_COLORS[fw][1]
             paletteinfo.append("%d\t\t0x%02X\t"%(fw, hw) + str(color) + '\n')         
         try:
-            with open(target + ext + '.inf', 'w') as fd:
+            with open(target + ext + '.info', 'w') as fd:
                 fd.writelines([
                     "FILE: %s\n" % target + ext,
                     "WIDTH: %d\n" % self.imgw,
@@ -274,8 +274,8 @@ class ImgConverter:
         try:
             with open(target + '.h', 'w') as fd:
                 fd.writelines([
-                    "// Include file for SDCC compiler\n",
-                    "// Generated automatically by pycpc-imgconv\n",
+                    "// Include file for C compilers\n",
+                    "// Generated automatically by imgconv.py\n",
                     "\n",
                     "extern const unsigned char %s_PALETTE[%d];\n" % (targetu, len(self.palette)),
                     "extern const unsigned char %s_IMG[%d];\n" % (targetu, len(data))
@@ -283,9 +283,8 @@ class ImgConverter:
             strpalette = '{ %s }' % ', '.join('0x%02X' % x for x in self.palette)
             with open(target + '.c', 'w') as fd:
                 fd.writelines([
-                    "// Implementation file for SDCC compiler\n",
-                    "// Generated automatically by pycpc-imgconv\n",
-                    "\n",
+                    "// Implementation file for C compilers\n",
+                    "// Generated automatically by imgconv.py\n",
                     "// mode %d, width %d, height %d\n" % (self.mode, self.imgw, self.imgh),
                     "\n",
                     "const unsigned char %s_PALETTE[%d] = %s;\n\n" % (targetu, len(self.palette), strpalette),
@@ -310,23 +309,21 @@ class ImgConverter:
         targetl = target.lower()
         try:
             strpalette = ', '.join('0x%02X' % x for x in self.palette)
-            with open(target + '.s', 'w') as fd:
+            with open(target + '.asm', 'w') as fd:
                 fd.writelines([
-                    ";; Assembly implementation file for ASZ80 assembler\n",
-                    ";; Generated automatically by pycpc-imgconv\n",
+                    "; Image generated automatically by imgconv.py\n",
+                    "; mode %d, width %d, height %d\n" % (self.mode, self.imgw, self.imgh),
                     "\n",
-                    ";; mode %d, width %d, height %d\n" % (self.mode, self.imgw, self.imgh),
-                    "\n",
-                    "%s_pal::\n" % targetl,
-                    ".db " + strpalette + "\n\n",
-                    "%s_img::\n" % targetl,
+                    "%s_pal:\n" % targetl,
+                    "\tdb " + strpalette + "\n\n",
+                    "%s_img:\n" % targetl,
                 ])
                 datalines = []
                 pixbyte = 8 if self.mode == 2 else 4 if self.mode == 1 else 2
                 row = min(16, int(self.imgw / pixbyte))
                 while len(data) > 0:
                     line = data[0:row]
-                    datalines.append('.db ' + ', '.join('0x%02X' % x for x in line) + '\n')
+                    datalines.append('\tdb ' + ', '.join('0x%02X' % x for x in line) + '\n')
                     data = data[row:]
                 datalines.append('\n')
                 fd.writelines(datalines)
@@ -396,8 +393,8 @@ def process_args():
         Tool that converts regular image files (PNG, JPEG, etc.) to formats usable in
         Amstrad CPC programs:
             'bin': binary pure files without AMSDOS header.
-            'c'  : C/C++ source files for use with SDCC.
-            'asm': ASZ80 assembly compatible source file.
+            'c'  : C/C++ source files for use with SDCC and the like.
+            'asm': Maxam/WinApe assembly compatible file.
             'scn': interlaced image following the Amstrad video memory scheme.
         """
     )
