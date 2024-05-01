@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-ASM80.PY a Z80 assembler focused on the Amstrad CPC. Based on pyz80
+ASM.PY a Z80 assembler focused on the Amstrad CPC. Based on pyz80
 pyz80 originally crafted by Andrew Collier, modified by Simon Owen
-ASM80.PY by Javier Garcia
+ASM.PY by Javier Garcia
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,12 +19,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-import getopt
 import sys, os
 import re
 import argparse
-import math     # used by expressions in eval calls
-import random   # used by expressions in eval calls
 
 
 IFSTATE_DISABLED = 0 # assemble all encounted code
@@ -51,15 +48,6 @@ class AsmContext:
         self.currentfile = "",
         self.currentline = ""
         self.lstcode = ""
-
-    def _save_mapfile(self, filename):
-        mapfile = os.path.splitext(filename)[0] + '.map'
-        with open(mapfile, 'w') as f:
-            f.write("symbols = {\n")
-            for sym, addr in sorted(self.symboltable.items()):
-                used = 'True' if sym in self.symusetable and self.symusetable[sym] > 1 else 'False'
-                f.write('  "%s": (%04X, %s),\n' % (sym, addr, used))
-            f.write("}\n")
 
     def parse_logic_expr(self, expr):
         values = re.findall(r'\w+', expr)
@@ -118,41 +106,16 @@ class AsmContext:
                 if testsymbol != '':
                     if not testsymbol[0].isdigit():
                         result = self.get_symbol(testsymbol)
-                        if (result != None):
+                        if result != None:
                             testsymbol = str(result)
                         elif testsymbol[0] == '"' and testsymbol[-1]=='"':
                             # string literal used in some expressions
                             pass
                         else:
-                            understood = 0
-                            # some of python's math expressions should be available to the parser
-                            if not understood and testsymbol.lower() != 'e':
-                                parsestr = 'math.' + testsymbol.lower()
-                                try:
-                                    eval(parsestr)
-                                    understood = 1
-                                except:
-                                    understood = 0
-
-                            if not understood:
-                                parsestr = 'random.' + testsymbol.lower()
-                                try:
-                                    eval(parsestr)
-                                    understood = 1
-                                except:
-                                    understood = 0
-
-                            if testsymbol in ["FILESIZE"]:
-                                parsestr = 'os.path.getsize'
-                                understood = 1
-
-                            if not understood :
-                                fatal("Error in expression " +
-                                      arg +
-                                      ": undefined symbol " +
-                                      self.expand_symbol(testsymbol))
-
-                            testsymbol = parsestr
+                            fatal("Error in expression " +
+                                arg +
+                                ": undefined symbol " +
+                                self.expand_symbol(testsymbol))
 
                     elif testsymbol[0] == '0' and len(testsymbol) > 2 and testsymbol[1] == 'b':
                         # binary literal
@@ -237,29 +200,134 @@ class AsmContext:
                 self.memory.append(b)
                 self.lstcode = self.lstcode + "%02X " % (b)
 
+    def save_mapfile(self, filename):
+        mapfile = os.path.splitext(filename)[0] + '.map'
+        with open(mapfile, 'w') as f:
+            for sym, addr in sorted(self.symboltable.items()):
+                used = 0 if sym not in self.symusetable else self.symusetable[sym]
+                f.write('%-13s: %04X   %d\n' % (sym, addr, used))
+
     def save_memory(self, filename):
         contentlen = len(self.memory)
         if contentlen > 0:
             # check that something has been assembled at all
             with open(filename, 'wb') as fd:
                 fd.write(self.memory)
-        self._save_mapfile(filename)
+        self.save_mapfile(filename)
 
     def write_listinfo(self, line):
         if self.listingfile == None:
             self.listingfile = open(os.path.splitext(self.outputfile)[0] + '.lst', "wt")
         self.listingfile.write(line + "\n")
 
+    def assemble_instruction(self, p, line):
+        # Lines must start by characters or underscord or '.'
+        match = re.match(r'^(\.\w+|\w+)(.*)', line.strip())
+        if not match:
+            fatal("in '" + line + "'. Valid instructions must start with a letter, an underscord or '.'")
+
+        inst = match.group(1).upper()
+        args = match.group(2).strip()
+
+        if (self.ifstate < IFSTATE_DISCART) or inst in ("IF", "ELSE", "ELSEIF", "ENDIF"):
+            try:
+                # get the pointer to the op_XXXX func
+                # not recognized opcodes or directives are labels in Maxam dialect BUT they
+                # can go with opcodes separated by spaces in the same line 'loop jp loop'
+                functioncall = eval("op_" + inst)
+                return functioncall(p, args)
+            except NameError as e:
+                if " EQU " in line.upper():
+                    params = line.upper().split(' EQU ')
+                    op_EQU(p, ','.join(params))
+                else:
+                    self.process_label(p, inst.rstrip())
+                    extra_statements = line.split(' ', 1)
+                    if len(extra_statements) > 1:
+                        return self.assemble_instruction(p, extra_statements[1])
+                return 0
+            except SystemExit as e:
+                sys.exit(e)
+        else:
+            return 0
+
+    def assembler_pass(self, p, inputfile):
+        # file references are local, so assembler_pass can be called recursively (op_INCLUDE)
+        # but copied to a global identifier in g_context for warning printouts
+
+        self.currentfile = "command line"
+        self.currentline = "0"
+
+        # just read the whole file into memory, it's not going to be huge (probably)
+        # I'd prefer not to, but assembler_pass can be called recursively
+        # (by op_INCLUDE for example) and fileinput does not support two files simultaneously
+
+        try:
+            currentfile = open(inputfile, 'r')
+            wholefile = currentfile.readlines()
+            wholefile.insert(0, '') # prepend blank so line numbers are 1-based
+            currentfile.close()
+        except:
+            fatal("Couldn't open file '" + inputfile + "' for reading")
+
+        linenumber = 0
+        while linenumber < len(wholefile):
+            currentline = wholefile[linenumber].replace("\t", "  ")
+            self.currentline = currentline
+            self.currentfile = inputfile + ":" + str(linenumber)
+            
+            # One line can contain multiple statements separated by ':', for example
+            # loop: jp loop
+            # lets remove comments and check for multi opcodes
+            filteredline = currentline.strip().split(';')[0]
+            statements = filteredline.split(':')
+            for opcode in statements:
+                opcode = opcode.strip()
+                if opcode == '': continue
+                if opcode.count('"') % 2 != 0 or opcode.count("'") % 2 != 0:
+                    fatal("mismatched quotes")
+                
+                bytes = self.assemble_instruction(p, opcode)
+                if p > 1:
+                    lstout = "%06d  %04X  %-13s\t%s" % (linenumber, self.origin, self.lstcode, opcode)
+                    self.lstcode = ""
+                    self.write_listinfo(lstout)
+                self.origin = (self.origin + bytes) % 65536
+
+            if self.currentfile.startswith(inputfile + ":") and int(self.currentfile.rsplit(':', 1)[1]) != linenumber:
+                linenumber = int(self.currentfile.rsplit(':', 1)[1])
+            linenumber += 1
+
+    def assemble(self, inputfile, outputfile, startaddr):
+        print("Generating", outputfile)
+        for p in [1, 2]:
+            self.origin = startaddr
+            self.include_stack = []
+            self.assembler_pass(p, inputfile)
+
+        if len(self.ifstack) > 0:
+            print("Error: Mismatched IF and ENDIF statements, too many IF")
+            for item in self.ifstack:
+                print(item[0])
+            sys.exit(1)
+        if len(self.forstack) > 0:
+            print("Error: Mismatched EQU FOR and NEXT statements, too many EQU FOR")
+            for item in self.forstack:
+                print(item[1])
+            sys.exit(1)
+        self.save_memory(outputfile)
+
+
 g_context = AsmContext()
 
-
+###########################################################################
 
 def warning(message):
-    print(g_context.currentfile, 'warning:', message)
+    print(os.path.basename(g_context.currentfile), 'warning:', message)
     print('\t', g_context.currentline.strip())
 
 def fatal(message):
-    print(g_context.currentfile, 'error:', message)
+    print(os.path.basename(g_context.currentfile), 'error:', message)
     print('\t', g_context.currentline.strip())
     sys.exit(1)
 
@@ -489,7 +557,7 @@ def op_READ(p, opargs):
         fatal("wrong path specified in the READ directive")
     g_context.include_stack.append(g_context.currentfile)
     filename = os.path.join(os.path.dirname(g_context.currentfile), path.group(0))
-    assembler_pass(p, filename)
+    g_context.assembler_pass(p, filename)
     g_context.currentfile = g_context.include_stack.pop()
     return 0
 
@@ -499,7 +567,7 @@ def op_FOR(p,opargs):
     bytes = 0
     for iterate in range(limit):
         g_context.symboltable['FOR'] = iterate
-        bytes += assemble_instruction(p,args[1].strip())
+        bytes += g_context.assemble_instruction(p,args[1].strip())
 
     if limit != 0:
         del g_context.symboltable['FOR']
@@ -1209,85 +1277,6 @@ def op_ENDIF(p, opargs):
 
 ###########################################################################
 
-def assemble_instruction(p, line):
-    # Lines must start by characters or underscord or '.'
-    match = re.match(r'^(\.\w+|\w+)(.*)', line.strip())
-    if not match:
-        fatal("in '" + line + "'. Valid instructions must start with a letter, an underscord or '.'")
-
-    inst = match.group(1).upper()
-    args = match.group(2).strip()
-
-    if (g_context.ifstate < IFSTATE_DISCART) or inst in ("IF", "ELSE", "ELSEIF", "ENDIF"):
-        functioncall = "op_" + inst + "(p, args)"
-        try:
-            return eval(functioncall)
-        except SystemExit as e:
-            sys.exit(e)
-        except NameError as e:
-            if " EQU " in line.upper():
-                params = line.upper().split(' EQU ')
-                op_EQU(p, ','.join(params))
-            else:
-                # not recognized opcodes or directives are labels in Maxam dialect BUT they
-                # can go with opcodes separated by spaces in the same line: loop jp loop
-                g_context.process_label(p, inst.rstrip())
-                extra_statements = line.split(' ', 1)
-                if len(extra_statements) > 1:
-                    return assemble_instruction(p, extra_statements[1])
-            return 0
-        except Exception as e:
-            fatal("unexpected exception " + str(e))
-    else:
-        return 0
-
-def assembler_pass(p, inputfile):
-    # file references are local, so assembler_pass can be called recursively (op_INCLUDE)
-    # but copied to a global identifier in g_context for warning printouts
-
-    g_context.currentfile = "command line"
-    g_context.currentline = "0"
-
-    # just read the whole file into memory, it's not going to be huge (probably)
-    # I'd prefer not to, but assembler_pass can be called recursively
-    # (by op_INCLUDE for example) and fileinput does not support two files simultaneously
-
-    try:
-        currentfile = open(inputfile, 'r')
-        wholefile = currentfile.readlines()
-        wholefile.insert(0, '') # prepend blank so line numbers are 1-based
-        currentfile.close()
-    except:
-        fatal("Couldn't open file '" + inputfile + "' for reading")
-
-    linenumber = 0
-    while linenumber < len(wholefile):
-        currentline = wholefile[linenumber].replace("\t", "  ")
-        g_context.currentline = currentline
-        g_context.currentfile = inputfile + ":" + str(linenumber)
-        
-        # One line can contain multiple statements separated by ':', for example
-        # loop: jp loop
-        # lets remove comments and check for multi opcodes
-        filteredline = currentline.strip().split(';')[0]
-        statements = filteredline.split(':')
-        for opcode in statements:
-            opcode = opcode.strip()
-            if opcode == '': continue
-            if opcode.count('"') % 2 != 0 or opcode.count("'") % 2 != 0:
-                fatal("mismatched quotes")
-            
-            bytes = assemble_instruction(p, opcode)
-            if p > 1:
-                lstout = "%06d  %04X  %-13s\t%s" % (linenumber, g_context.origin, g_context.lstcode, opcode)
-                g_context.lstcode = ""
-                g_context.write_listinfo(lstout)
-            g_context.origin = (g_context.origin + bytes) % 65536
-
-        if g_context.currentfile.startswith(inputfile + ":") and int(g_context.currentfile.rsplit(':', 1)[1]) != linenumber:
-            linenumber = int(g_context.currentfile.rsplit(':', 1)[1])
-        linenumber += 1
-
 def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
     if (outputfile == None):
         outputfile = os.path.splitext(inputfile)[0] + ".bin"
@@ -1307,24 +1296,7 @@ def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
             sys.exit(1)
         g_context.set_symbol(sym[0], aux_int(sym[1]))
 
-    print("Generating", outputfile)
-    for p in [1, 2]:
-        g_context.origin = startaddr
-        g_context.include_stack = []
-        assembler_pass(p, inputfile)
-
-    if len(g_context.ifstack) > 0:
-        print("Error: Mismatched IF and ENDIF statements, too many IF")
-        for item in g_context.ifstack:
-            print(item[0])
-        sys.exit(1)
-    if len(g_context.forstack) > 0:
-        print("Error: Mismatched EQU FOR and NEXT statements, too many EQU FOR")
-        for item in g_context.forstack:
-            print(item[1])
-        sys.exit(1)
-
-    g_context.save_memory(outputfile)
+    g_context.assemble(inputfile, outputfile, startaddr)
 
 def aux_int(param):
     """
@@ -1335,8 +1307,8 @@ def aux_int(param):
 
 def process_args():
     parser = argparse.ArgumentParser(
-        prog = 'asm80.py',
-        description = 'A Z80 assembler focused on the Amstrad CPC. Based on pyz80 but using a dialect compatible with Maxam.'
+        prog = 'asm.py',
+        description = 'A Z80 assembler focused on the Amstrad CPC. Based on pyz80 but using a dialect compatible with Maxam/WinAPE.'
     )
     parser.add_argument('inputfile', help = 'Input file.')
     parser.add_argument('-d', '--define', default = [], action = 'append', help = 'Defines a pair SYMBOL=VALUE.')
