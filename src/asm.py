@@ -323,11 +323,11 @@ g_context = AsmContext()
 ###########################################################################
 
 def warning(message):
-    print(os.path.basename(g_context.currentfile), 'warning:', message)
+    print(os.path.basename("[asm] " + g_context.currentfile), 'warning:', message)
     print('\t', g_context.currentline.strip())
 
 def fatal(message):
-    print(os.path.basename(g_context.currentfile), 'error:', message)
+    print(os.path.basename("[asm] " + g_context.currentfile), 'error:', message)
     print('\t', g_context.currentline.strip())
     sys.exit(1)
 
@@ -438,7 +438,7 @@ def op_PRINT(p, opargs):
                 text.append(str(a))
             else:
                 text.append("?")
-    print(g_context.currentfile, "PRINT: ", ",".join(text))
+    print("[asm] " + g_context.currentfile, "PRINT: ", ",".join(text))
     return 0
 
 def op_EQU(p, opargs):
@@ -1312,7 +1312,7 @@ def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
         try:
             val = aux_int(sym[1])
         except:
-            print("error: invalid format for command-line symbol definition in" + value)
+            print("[asm] error: invalid format for command-line symbol definition in" + value)
             sys.exit(1)
         g_context.set_symbol(sym[0], aux_int(sym[1]))
 
@@ -1341,7 +1341,7 @@ def process_args():
 def main():
     args = process_args()
     run_assemble(args.inputfile, args.output, args.define, args.start)
-    print("OK")
+    print("[asm] OK")
     sys.exit(0)
 
 if __name__ == "__main__":

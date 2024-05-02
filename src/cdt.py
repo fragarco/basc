@@ -641,7 +641,7 @@ class CDT:
             with open(outputfile, 'wb') as fd:
                 fd.write(content)
         except IOError:
-            print("[pycpc-cdt] could not write file:", outputfile)
+            print("[cdt] could not write file:", outputfile)
 
     def read(self, inputfile):
         content = bytearray()
@@ -655,9 +655,9 @@ class CDT:
             self.set(content)
             return True      
         except IOError:
-            print("[pycpc-cdt] could not read file:", inputfile)
+            print("[cdt] could not read file:", inputfile)
         except FormatError as e:
-            print("[pycpc-cdt] error in input file:", e.message)
+            print("[cdt] error in input file:", e.message)
         return False
 
     def _add_file(self, incontent, header, speed):
@@ -737,11 +737,11 @@ def run_read_input_file(inputfile):
                 bytes = fd.read(chunksz)
         return content      
     except IOError:
-        print("[pycpc-cdt] error reading file:", inputfile)
+        print("[cdt] error reading file:", inputfile)
         sys.exit(1)
 
 def run_new(args, cdt):
-    print("[pycpc-cdt] creating", args.cdtfile)
+    print("[cdt] creating", args.cdtfile)
     cdt.format()
     cdt.write(args.cdtfile)
     pass
@@ -751,9 +751,9 @@ def run_check(args, cdt):
     try:
         cdt.set(content)
         cdt.check()
-        print("[pycpc-cdt]", args.cdtfile, "format seems compatible")
+        print("[cdt]", args.cdtfile, "format seems compatible")
     except FormatError as e:
-        print("[pycpc-cdt] unsupported CDT format:", str(e))
+        print("[cdt] unsupported CDT format:", str(e))
         sys.exit(1)
 
 def run_cat(args, cdt):
@@ -764,7 +764,7 @@ def run_put_file(filein, args, cdt, header):
     run_check(args, cdt)
     content = run_read_input_file(filein)
     if len(content) > 65536:
-        print("[pycpc-cdt] max input file size is 64K")
+        print("[cdt] max input file size is 64K")
         sys.exit(1)
     if header != None:
         header.filename = args.name[0:16] if args.name != None else "UNNAMED"
@@ -776,7 +776,7 @@ def run_put_file(filein, args, cdt, header):
 def run_put_asciifile(args, cdt):
     header = DataHeader()
     header.type = DataHeader.FT_ASCII
-    print("[pycpc-cdt] adding ASCII file", args.put_ascii, "to", args.cdtfile)
+    print("[cdt] adding ASCII file", args.put_ascii, "to", args.cdtfile)
     run_put_file(args.put_ascii, args, cdt, header)
 
 def run_put_binfile(args, cdt):
@@ -785,11 +785,11 @@ def run_put_binfile(args, cdt):
         header.type = DataHeader.FT_BAS
     else:
         header.type = DataHeader.FT_BIN
-    print("[pycpc-cdt] adding BIN file", args.put_bin, "to", args.cdtfile)
+    print("[cdt] adding BIN file", args.put_bin, "to", args.cdtfile)
     run_put_file(args.put_bin, args, cdt, header)
 
 def run_put_rawfile(args, cdt):
-    print("[pycpc-cdt] adding raw file", args.put_raw, "to", args.cdtfile)
+    print("[cdt] adding raw file", args.put_raw, "to", args.cdtfile)
     run_put_file(args.put_raw, args, cdt, None)
 
 def aux_int(param):
@@ -806,7 +806,7 @@ def process_args():
     )
     parser.add_argument('cdtfile', help="CDT file. Used as input/output depending on the arguments used.")
     parser.add_argument('--new', action='store_true', help='Creates a new empty CDT file.')
-    parser.add_argument('--check', action='store_true', help='Checks if the CDT file format is compatible with pycpc-cdt.')
+    parser.add_argument('--check', action='store_true', help='Checks if the CDT file format is compatible.')
     parser.add_argument('--cat', action='store_true', help='Lists in the standard output all the blocks currently present in the CDT file.')
     parser.add_argument('--put-bin', type=str, help='Adds a new binary/basic file to CDT file.')
     parser.add_argument('--put-ascii', type=str, help='Adds a new ASCII file to CDT file.')

@@ -323,7 +323,7 @@ class ImgConverter:
                 row = min(16, int(self.imgw / pixbyte))
                 while len(data) > 0:
                     line = data[0:row]
-                    datalines.append('\tdb ' + ', '.join('0x%02X' % x for x in line) + '\n')
+                    datalines.append('\tdb ' + ', '.join('&%02X' % x for x in line) + '\n')
                     data = data[row:]
                 datalines.append('\n')
                 fd.writelines(datalines)
@@ -366,7 +366,7 @@ def run_read_inputimg(srcfile):
         img = Image.open(srcfile)
         return img.convert('RGB')
     except Exception as e:
-        print("[pycpc-imgconv] error trying to read the input image", srcfile)
+        print("[imgconv] error trying to read the input image", srcfile)
         print(str(e))
         sys.exit(1)
 
@@ -410,7 +410,7 @@ def main():
     try:
         run_convert(args)
     except ConversionError as e:
-        print("[pycpc-imgconv] error: " + str(e))
+        print("[imgconv] error: " + str(e))
     sys.exit(0)
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 ; Hello World Test
 ; A modified version from http://www.chibiakumas.com/z80/helloworld.php
+; used with the aim of testing asm.py
 
 org &1200
 
