@@ -1,31 +1,5 @@
 """
-Preprocesses an ASCII BAS input file to add line numbers, remove lines starting with ',
-removes tabs and head/tail spaces, inserts other BASIC files and replace labels 
-(strings starting with ::) with the corresponding line numbers in GOSUB, GOTO
-and IF sentences.
-
-Code:
-
-' Simple example
-::main
-    print "Hello World!"
-    goto ::main
-
-Will be translated to:
-
-10 print "Hello World!"
-20 goto 10
-
-It is possible to insert code from other BAS files using the reserved keyword
-INCBAS, for example:
-
-' Simple example
-incbas "myrutines.bas"
-::main
-    print "Hello World!"
-    ' calling a gosub section defined in myrutines through a label
-    gosub ::myrutine_01
-
+Preprocesses an ASCII BAS input file to insert other BASIC files
 """
 
 import sys
@@ -38,74 +12,69 @@ class BASPreprocessorError(Exception):
     """
     Raised when procesing a file and its format is not the expected one.
     """
-    def __init__(self, message, line = -1):
+    def __init__(self, message, file = "", line = -1):
         self.message = message
         self.line = line
+        self.file = file
 
     def __str__(self):
         if self.line != -1:
-            return "[baspp] Error in line %d: %s" % (self.line, self.message)
+            return "[baspp] Error: %s\n\tfile %s line %d" % (self.message, self.file, self.line)
         else:
             return "[baspp] Error: %s" % self.message
     
 class BASPreprocessor:
 
     def _insert_file(self, iline, line, lines):
-        relpath = re.search(r'(?<=["\'])(.*?)(?=["\'])', line)
+        relpath = re.search(r'(?<=")(.*)(?=")', line)
         if relpath == None:
-            raise BASPreprocessorError("%s\nIncluded files must be specified between double quotes '" % infile)
+            raise BASPreprocessorError(
+                "the file to be included in '%s' must be specified between double quotes" % line,
+                lines[iline][0],
+                lines[iline][1]
+            )
+        if ":" in line.replace(relpath.group(0), ''):
+            # colon outside of quotes
+            raise BASPreprocessorError(
+                "lines with INCBAS keyword cannot include multiple commands symbol ':'",
+                lines[iline][0],
+                lines[iline][1]
+            )
         infile = os.path.join(os.getcwd(), relpath.group(0))
         try:
             print("[baspp] Including", infile)
             with open(infile, 'r') as f:
-                newlines = f.readlines()
+                filecontent = f.readlines()
+                newlines = [(infile, i, line) for i, line in enumerate(filecontent)]
                 return lines[0:iline+1] + newlines + lines[iline+1:]
         except IOError:
-            raise BASPreprocessorError("couldn't read included file %s" % infile)
-
-    def _replace_labels(self, code, labels):
-        output = []
-        label_pattern = re.compile("(::[a-zA-Z0-9_-]*)")
-        for _, l in code:
-            toreplace = label_pattern.findall(l)
-            for label in toreplace:
-                ulabel = label.upper()
-                if ulabel in labels:
-                    l = l.replace(label, labels[ulabel])
-                else:
-                    raise BASPreprocessorError("unknown label %s"%(l))
-            output.append(l + "\n")
-        return output
+            raise BASPreprocessorError(
+                "couldn't read included file %s" % relpath.group(0),
+                lines[iline][0],
+                lines[iline][1]
+            )
 
     def _parse_input(self, inputfile, increment):
-        lines = []
-        labels = {}
-        linenum = increment
+        outlines = []
+        autonum = increment
         try:
             with open(inputfile, 'r') as f:
-                filelines = f.readlines()
-                iline = 0
-                while iline < len(filelines):
-                    line = filelines[iline].strip()
-                    upline = line.upper()
-                    if len(line) > 0 and line[0] != "'" and upline[0:4] != "REM ":
-                        if "INCBAS " == upline[0:7]:
-                            # insert content from another BAS file
-                            filelines = self._insert_file(iline, line, filelines)
-                            iline = iline + 1
-                            continue 
-                        elif line[0:2] == '::':
-                            # label that can be used by GOSUB, GOTO or IF
-                            if upline in labels:
-                                raise BASPreprocessorError("multiple definitions of label %s" % (line))
-                            labels[upline] = str(linenum)
-                        else:
-                            # regular line
-                            line = str(linenum) + ' ' + line
-                            lines.append((iline + 1, line))
-                            linenum = linenum + increment
-                    iline = iline + 1
-            return lines, labels
+                filecontent = f.readlines()
+                srclines = [(inputfile, i+1, line) for i, line in enumerate(filecontent)]
+                srcline = 0
+                while srcline < len(srclines):
+                    filename, fileline, line = srclines[srcline]
+                    line = line.strip()
+                    if "INCBAS " == line[0:7].upper():
+                        # insert content from another BAS file
+                        srclines = self._insert_file(srcline, line, srclines)
+                        srcline = srcline + 1
+                    else:
+                        line = str(autonum) + ' ' + line
+                        outlines.append((filename, fileline, line + '\n'))
+                        autonum = autonum + increment
+                    srcline = srcline + 1
+            return outlines
         except IOError:
             raise BASPreprocessorError("couldn't read input file %s" % input)
 
@@ -125,11 +94,10 @@ class BASPreprocessor:
         if lineinc < 1:
             raise BASPreprocessorError("line increments must be a number equal or greater than 1")
         
-        code, labels = self._parse_input(input, lineinc)
+        code = self._parse_input(input, lineinc)
         if len(code) == 0:
-            raise BASPreprocessorError("input file %s couldn't be read or accessed" % input)
-
-        return self._replace_labels(code, labels)
+            raise BASPreprocessorError("input file %s is empty or cannot be read" % input)
+        return code
 
 def process_args():
     parser = argparse.ArgumentParser(
