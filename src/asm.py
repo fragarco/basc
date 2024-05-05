@@ -1297,7 +1297,7 @@ def op_ENDIF(p, opargs):
 
 ###########################################################################
 
-def run_assemble(inputfile, outputfile, predefsymbols, startaddr):
+def run_assemble(inputfile, outputfile = None, predefsymbols = [], startaddr = 0x4000):
     if (outputfile == None):
         outputfile = os.path.splitext(inputfile)[0] + ".bin"
     

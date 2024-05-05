@@ -102,10 +102,10 @@ class BASParser:
     def emit_srcline(self):
         _, _, line = self.lexer.get_currentcode()
         self.emitter.emit("; " + line.strip())
-        self.emitter.newline()
 
     def parse(self):
         # lets leave the first line of code ready
+        self.emitter.emitstart()
         self.emit_srcline()
         self.cur_token = self.lexer.get_token()
         self.peek_token = self.lexer.get_token()
@@ -117,7 +117,7 @@ class BASParser:
         """program := CODE_EOF | NEWLINE program | codeline program"""
         # Parse all the statements in the program.
         if self.match_current(baslex.TokenType.CODE_EOF):
-            pass
+            self.emitter.emitend()
         elif self.match_current(baslex.TokenType.NEWLINE):
             self.next_token()
             self.program()

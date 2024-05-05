@@ -4,7 +4,7 @@ import baspp
 import baslex
 import basparse
 import basemit
-
+import asm
 """
 def main():
     print("Teeny Tiny Compiler")
@@ -47,7 +47,8 @@ def main():
         emitter = basemit.ASMEmitter(args.out + '.asm')
         parser = basparse.BASParser(lexer, emitter)
         parser.parse()
-        emitter.save_output()
+        asmfile = emitter.save_output()
+        asm.run_assemble(asmfile)
     except Exception as e:
         print(str(e))
 
