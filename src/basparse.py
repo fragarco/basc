@@ -100,13 +100,6 @@ class BASParser:
         """Return true if the next token matches."""
         return tktype == self.peek_token.type
 
-    def match(self, tktype):
-        """Try to match current token. If not, error. Advances the current token."""
-        if not self.match_current(tktype):
-           return False
-        self.next_token()
-        return True
-
     def next_token(self):
         """Advances the current token."""
         self.cur_token = self.peek_token
@@ -182,7 +175,7 @@ class BASParser:
         self.emitter.emit_rtcall('CLS', self.expr_stack)
         
     def expr_int(self):
-        """ expr_int := term_int | term_int OPERATION expr_int"""
+        """ expr_int := term_int | term_int OPERATION expr_int | (expr_int)"""
         if self.peek_token.is_operation():
             self.term_int()
             # store operation
@@ -190,6 +183,11 @@ class BASParser:
             self.next_token()
             self.expr_int()
             self.expr_stack.append(optoken.text)
+        elif self.match_current(baslex.TokenType.LPAR):
+            self.next_token()
+            self.expr_int()
+            if not self.match_current(baslex.TokenType.RPAR):
+                self.abort(ErrorCode.SYNTAX)
         else:
             self.term_int()
         print("expr_stack=", self.expr_stack)
