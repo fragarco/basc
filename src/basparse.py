@@ -34,6 +34,7 @@ class ErrorCode:
     FILEOPEN= "File already open"
     NOFILE  = "File not open"
     BROKEN  = "Broken in"
+    NOKEYW   = "Keyword not implemented"
 
 class BASParserError(Exception):
     """
@@ -67,9 +68,9 @@ class BASParser:
     def abort(self, message):
         raise BASParserError(message)
     
-    def error(self, message):
+    def error(self, message, extrainfo = ""):
         filename, linenum, line = self.lexer.get_currentcode()
-        print("%s:%d: %s -> %s" % (filename, linenum, line.strip(), message))
+        print("%s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
         while not self.match_current(baslex.TokenType.NEWLINE):
             self.next_token()
 
@@ -98,14 +99,14 @@ class BASParser:
         """Return true if the current token is a comparison operator."""
         return self.match_current(baslex.TokenType.GT) or self.match_current(baslex.TokenType.GTEQ) or self.match_current(baslex.TokenType.LT) or self.match_current(baslex.TokenType.LTEQ) or self.match_current(baslex.TokenType.EQEQ) or self.match_current(baslex.TokenType.NOTEQ)
 
-    def emitcurrentline(self):
+    def emit_srcline(self):
         _, _, line = self.lexer.get_currentcode()
         self.emitter.emit("; " + line.strip())
         self.emitter.newline()
 
     def parse(self):
         # lets leave the first line of code ready
-        self.emitcurrentline()
+        self.emit_srcline()
         self.cur_token = self.lexer.get_token()
         self.peek_token = self.lexer.get_token()
         self.program()
@@ -113,8 +114,7 @@ class BASParser:
     # Production rules.
 
     def program(self):
-        """program ::= CODE_EOF | NEWLINE program | codeline {program}"""
-
+        """program := CODE_EOF | NEWLINE program | codeline program"""
         # Parse all the statements in the program.
         if self.match_current(baslex.TokenType.CODE_EOF):
             pass
@@ -123,37 +123,38 @@ class BASParser:
             self.program()
         else:
             self.codeline()
+            self.emit_srcline()
             self.program()
 
     def codeline(self):
-        """ codeline ::= NUMBER code """
+        """ codeline :=  NUMBER statement """
         if self.match_current(baslex.TokenType.NUMBER):
-            self.emitter.emit("!%s [%s] " % (self.cur_token.type, self.cur_token.text))
             self.next_token()
-            self.code()
-            self.emitcurrentline()
+            self.statement()
         else:
             self.error(ErrorCode.SYNTAX)
 
-    def code(self):
-        """ code ::= NEWLINE | : code | statement code """
-        if self.match_current(baslex.TokenType.NEWLINE):
-            self.emitter.newline()
-            self.next_token()
-        elif self.match_current(baslex.TokenType.COLON):
-            self.emitter.emit(": ")
-            self.next_token()
-            self.code()
-        else:
-            self.statement()
-            self.code()
-
     def statement(self):
+        """ statement = NEWLINE | keyword (NEWLINE | ':' statement) """
         if self.match_current(baslex.TokenType.NEWLINE):
-            self.emitter.newline()
-        elif self.match_current(baslex.TokenType.COLON):
-            self.emitter.newline()
-        else:
-            self.emitter.emit("@%s [%s] " % (self.cur_token.type, self.cur_token.text))
+            # for example a full line comment
             self.next_token()
-            self.statement()
+        elif self.cur_token.is_keyword():
+            self.keyword()
+            if self.match_current(baslex.TokenType.COLON):
+                self.next_token()
+                self.statement()
+            elif self.match_current(baslex.TokenType.NEWLINE):
+                self.next_token()
+            else:
+                self.error(ErrorCode.SYNTAX)
+        else:
+            self.error(ErrorCode.UNKNOWN)
+
+    def keyword(self):
+        keyword_rule = getattr(self, "keyword_" + self.cur_token.text, None)
+        if keyword_rule == None:
+            self.error(ErrorCode.NOKEYW, ": " + self.cur_token.text)
+        else:
+            keyword_rule()
+            self.next_token()

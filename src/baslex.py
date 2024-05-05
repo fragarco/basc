@@ -27,6 +27,7 @@ class BASLexer:
         self.cur_char = ''   # Current character in the string.
         self.cur_pos = -1    # Current position in the string.
         self.cur_line = 0
+        self.last_token = None
         self.next_char()
 
     def get_currentcode(self):
@@ -125,7 +126,6 @@ class BASLexer:
         # Check the first character of this token to see if we can decide what it is.
         if self.cur_char == '\n':
             token = Token('', TokenType.NEWLINE)
-            self.cur_line = self.cur_line + 1
 
         elif self.cur_char == '\0':
             token = Token('', TokenType.CODE_EOF)
@@ -161,6 +161,10 @@ class BASLexer:
             self.abort("unexpected character found '" + self.cur_char + "'")
 
         self.next_char()
+        if self.last_token != None and self.last_token.type == TokenType.NEWLINE:
+             # we are processing a new line of the src code
+             self.cur_line = self.cur_line + 1
+        self.last_token = token
         return token
 
     def lstrip(self):
