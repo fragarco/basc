@@ -172,18 +172,12 @@ class BASParser:
             self.next_token()
             self.next_token()
             self.expr_int()
+            print("expr_stack=", self.expr_stack)
         self.emitter.emit_rtcall('CLS', self.expr_stack)
         
     def expr_int(self):
-        """ expr_int := term_int | term_int OPERATION expr_int | (expr_int)"""
-        if self.peek_token.is_operation():
-            self.term_int()
-            # store operation
-            optoken = self.cur_token
-            self.next_token()
-            self.expr_int()
-            self.expr_stack.append(optoken.text)
-        elif self.match_current(baslex.TokenType.LPAR):
+        """ expr_int := term_int [OP expr_int] | (expr_int) [OP expre_int] """
+        if self.match_current(baslex.TokenType.LPAR):
             self.next_token()
             self.expr_int()
             if not self.match_current(baslex.TokenType.RPAR):
@@ -191,7 +185,12 @@ class BASParser:
             self.next_token()
         else:
             self.term_int()
-        print("expr_stack=", self.expr_stack)
+        
+        if self.cur_token.is_operation():
+            optoken = self.cur_token
+            self.next_token()
+            self.expr_int()
+            self.expr_stack.append(optoken.text)
 
     def term_int(self):
         """ term_int := int(NUMBER) | int(IDENT)"""
