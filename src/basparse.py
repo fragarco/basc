@@ -188,6 +188,7 @@ class BASParser:
             self.expr_int()
             if not self.match_current(baslex.TokenType.RPAR):
                 self.abort(ErrorCode.SYNTAX)
+            self.next_token()
         else:
             self.term_int()
         print("expr_stack=", self.expr_stack)
