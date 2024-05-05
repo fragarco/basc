@@ -1297,7 +1297,7 @@ def op_ENDIF(p, opargs):
 
 ###########################################################################
 
-def run_assemble(inputfile, outputfile = None, predefsymbols = [], startaddr = 0x4000):
+def assemble(inputfile, outputfile = None, predefsymbols = [], startaddr = 0x4000):
     if (outputfile == None):
         outputfile = os.path.splitext(inputfile)[0] + ".bin"
     
@@ -1340,7 +1340,7 @@ def process_args():
 
 def main():
     args = process_args()
-    run_assemble(args.inputfile, args.output, args.define, args.start)
+    assemble(args.inputfile, args.output, args.define, args.start)
     print("[asm] OK")
     sys.exit(0)
 

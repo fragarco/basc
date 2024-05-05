@@ -1,12 +1,29 @@
+"""
+Emitter object to generate Amstrad CPC Z80 Assembly language in
+Maxam/WinAPE style.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation in its version 3.
+
+This program is distributed in the hope that it will be useful
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+"""
 
 class FW_CALL:
     TXT_CLEAR_WINDOW = "&6CBB"
 
 class ASMEmitter:
     """
-    An emitter object keeps track of the generated code and outputs it
-    as Amstra CPC Z80 Assembly language (Maxam/WinAPE style)
+    Emitter for Amstrad CPC Z80 Assembly language (Maxam/WinAPE style)
     """
+
     def __init__(self, outputfile):
         self.outputfile = outputfile
         self.code = []

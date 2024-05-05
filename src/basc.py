@@ -1,28 +1,27 @@
+"""
+Amstrad Locomotive BASIC compiler.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation in its version 3.
+
+This program is distributed in the hope that it will be useful
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+"""
+
 import sys
 import argparse
 import baspp
 import baslex
 import basparse
 import basemit
-import asm
-"""
-def main():
-    print("Teeny Tiny Compiler")
-
-    if len(sys.argv) != 2:
-        sys.exit("Error: Compiler needs source file as argument.")
-    with open(sys.argv[1], 'r') as inputFile:
-        source = inputFile.read()
-
-    # Initialize the lexer, emitter, and parser.
-    lexer = Lexer(source)
-    emitter = Emitter("out.c")
-    parser = Parser(lexer, emitter)
-
-    parser.program() # Start the parser.
-    emitter.writeFile() # Write the output to file.
-    print("Compiling completed.")
-"""
+import basm
 
 def process_args():
     parser = argparse.ArgumentParser(
@@ -48,7 +47,7 @@ def main():
         parser = basparse.BASParser(lexer, emitter)
         parser.parse()
         asmfile = emitter.save_output()
-        asm.run_assemble(asmfile)
+        basm.assemble(asmfile)
     except Exception as e:
         print(str(e))
 
