@@ -32,9 +32,9 @@ class BASPreprocessorError(Exception):
 
     def __str__(self):
         if self.line != -1:
-            return "[baspp] Error: %s\n\tfile %s line %d" % (self.message, self.file, self.line)
+            return "Fatal error: %s\n\tfile %s line %d" % (self.message, self.file, self.line)
         else:
-            return "[baspp] Error: %s" % self.message
+            return "Falta error: %s" % self.message
     
 class BASPreprocessor:
 
@@ -55,7 +55,7 @@ class BASPreprocessor:
             )
         infile = os.path.join(os.getcwd(), relpath.group(0))
         try:
-            print("[baspp] Including", infile)
+            print("Including BAS file", infile)
             with open(infile, 'r') as f:
                 filecontent = f.readlines()
                 newlines = [(infile, i, line) for i, line in enumerate(filecontent)]
@@ -95,7 +95,7 @@ class BASPreprocessor:
         try:
             with open(output, 'w') as f:
                 f.writelines(code)
-            print("[baspp] File", output, "has been generated")
+            print("Writting preprocessed file", output)
             return True
         except IOError:
             raise BASPreprocessorError("couldn't write file %s" % output)

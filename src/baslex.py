@@ -80,6 +80,10 @@ class BASLexer:
             return Token(self.cur_char, TokenType.ASTERISK)
         elif self.cur_char == '/':
             return Token(self.cur_char, TokenType.SLASH)
+        elif self.cur_char == '(':
+            return Token(self.cur_char, TokenType.LPAR)
+        elif self.cur_char == ')':
+            return Token(self.cur_char, TokenType.RPAR)
         elif self.cur_char == '=':
             return Token(self.cur_char, TokenType.EQ)
         elif self.cur_char == '>':
@@ -162,6 +166,9 @@ class BASLexer:
         elif self.cur_char == '\"':
             token = self._get_quotedtext()
         
+        elif self.cur_char == '#':
+            token = Token('#', TokenType.CHANNEL)
+
         elif self.cur_char.isdigit():
             token = self._get_number()
            
@@ -214,6 +221,10 @@ class Token:
         # Check if the token is in the list of keywords.
         return Token.get_keyword(self.text) != None
 
+    def is_operation(self):
+        # Check if the token is in the list of operations.
+        return self.text != '' and self.text in "+-*/"
+
 class TokenType(enum.Enum):
     """
     Enum for all supported tokens.
@@ -223,6 +234,7 @@ class TokenType(enum.Enum):
     NUMBER = 1
     STRING = 2
     IDENT = 3
+    CHANNEL = 4
 
     # keywords
     ABS	= 100

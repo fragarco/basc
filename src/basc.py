@@ -46,8 +46,11 @@ def main():
         emitter = basemit.ASMEmitter(args.out + '.asm')
         parser = basparse.BASParser(lexer, emitter)
         parser.parse()
-        asmfile = emitter.save_output()
-        basm.assemble(asmfile)
+        if not parser.errors:
+            asmfile = emitter.save_output()
+            basm.assemble(asmfile)
+        else:
+            print(parser.errors, "errors in total")
     except Exception as e:
         print(str(e))
 
