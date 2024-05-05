@@ -159,6 +159,7 @@ class BASParser:
             self.error(ErrorCode.UNKNOWN)
 
     def keyword(self):
+        """ keyword := keyword_KEYWORD"""
         keyword_rule = getattr(self, "keyword_" + self.cur_token.text, None)
         if keyword_rule == None:
             self.error(ErrorCode.NOKEYW, ": " + self.cur_token.text)
@@ -167,8 +168,8 @@ class BASParser:
             self.next_token()
 
     def keyword_CLS(self):
-        """ keyword_CLS := CLS (# expr_int)"""
-        if self.match_next(baslex.TokenType.CHANNEL):
+        """ keyword_CLS := CLS [# expr_int]"""
+        if self.match_next(baslex.TokenType.STREAM):
             self.next_token()
             self.next_token()
             self.expr_int()
@@ -176,7 +177,7 @@ class BASParser:
         self.emitter.emit_rtcall('CLS', self.expr_stack)
         
     def expr_int(self):
-        """ expr_int := term_int [OP expr_int] | (expr_int) [OP expre_int] """
+        """ expr_int := term_int [OP expr_int] | '('expr_int')' [OP expre_int] """
         if self.match_current(baslex.TokenType.LPAR):
             self.next_token()
             self.expr_int()

@@ -167,7 +167,7 @@ class BASLexer:
             token = self._get_quotedtext()
         
         elif self.cur_char == '#':
-            token = Token('#', TokenType.CHANNEL)
+            token = Token('#', TokenType.STREAM)
 
         elif self.cur_char.isdigit():
             token = self._get_number()
@@ -234,7 +234,7 @@ class TokenType(enum.Enum):
     NUMBER = 1
     STRING = 2
     IDENT = 3
-    CHANNEL = 4
+    STREAM = 4
 
     # keywords
     ABS	= 100
