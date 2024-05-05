@@ -158,3 +158,8 @@ class BASParser:
         else:
             keyword_rule()
             self.next_token()
+
+    def keyword_CLS(self):
+        """ keyword_CLS := CLS """
+        self.emitter.emit_rtcall('CLS')
+        self.next_token()

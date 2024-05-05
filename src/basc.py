@@ -44,7 +44,7 @@ def main():
         pp.save_output(args.out + '.bpp', [c for _, _, c in code])
         
         lexer = baslex.BASLexer(code)
-        emitter = basemit.BASEmitter(args.out + '.asm')
+        emitter = basemit.ASMEmitter(args.out + '.asm')
         parser = basparse.BASParser(lexer, emitter)
         parser.parse()
         emitter.save_output()
