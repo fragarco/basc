@@ -30,6 +30,7 @@ def process_args():
     )
     parser.add_argument('infile', help="BAS file with pseudo Locomotive Basic code.")
     parser.add_argument('-o', '--out', help="Target file name without extension. If missing, <infile> name will be used.")
+    parser.add_argument('--verbose', action='store_true', help="Prints extra information during the compilation process.")
     args = parser.parse_args()
     return args
 
@@ -44,7 +45,7 @@ def main():
         
         lexer = baslex.BASLexer(code)
         emitter = basemit.ASMEmitter(args.out + '.asm')
-        parser = basparse.BASParser(lexer, emitter)
+        parser = basparse.BASParser(lexer, emitter, args.verbose)
         parser.parse()
         if not parser.errors:
             asmfile = emitter.save_output()

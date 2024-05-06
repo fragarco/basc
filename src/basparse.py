@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import baslex
+import inspect
 
 class ErrorCode:
     NEXT    = "Unexpected NEXT"
@@ -69,9 +70,10 @@ class BASParser:
     A BASParser object keeps track of current token, checks if the code matches the grammar,
     and emits code along the way if an emitter has been set.
     """
-    def __init__(self, lexer, emitter):
+    def __init__(self, lexer, emitter, verbose):
         self.lexer = lexer
         self.emitter = emitter
+        self.verbose = verbose
         self.errors = 0
 
         self.symbols = {}           # All variables we have declared so far.
@@ -82,12 +84,16 @@ class BASParser:
     def abort(self, message, extrainfo = ""):
         self.errors = self.errors + 1
         filename, linenum, line = self.lexer.get_currentcode()
+        if self.verbose:
+            print("abort signal from", inspect.stack()[1].function + "()")
         errmsg = "Fatal error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo)
         raise BASParserError(errmsg)
     
     def error(self, message, extrainfo = ""):
         self.errors = self.errors + 1
         filename, linenum, line = self.lexer.get_currentcode()
+        if self.verbose:
+            print("error from", inspect.stack()[1].function + "()")
         print("%s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
         while not self.match_current(baslex.TokenType.NEWLINE):
             self.next_token()
@@ -104,7 +110,12 @@ class BASParser:
         """Advances the current token."""
         self.cur_token = self.peek_token
         self.peek_token = self.lexer.get_token()
-        # No need to worry about passing the CODE_EOF, lexer handles that.
+        if self.verbose:
+            print("call from", inspect.stack()[1].function + "()",
+                "moving current token to ->",
+                None if self.cur_token == None else self.cur_token.type,
+                None if self.cur_token == None else self.cur_token.text
+            )
 
     def emit_srcline(self):
         _, _, line = self.lexer.get_currentcode()
@@ -165,42 +176,56 @@ class BASParser:
             self.error(ErrorCode.NOKEYW, ": " + self.cur_token.text)
         else:
             keyword_rule()
-            self.next_token()
 
     def keyword_CLS(self):
         """ keyword_CLS := CLS [# expr_int]"""
         if self.match_next(baslex.TokenType.STREAM):
             self.next_token()
             self.next_token()
+            self.expr_stack = []
             self.expr_int()
-            print("expr_stack=", self.expr_stack)
         self.emitter.emit_rtcall('CLS', self.expr_stack)
-        
+   
     def expr_int(self):
-        """ expr_int := term_int [OP expr_int] | '('expr_int')' [OP expre_int] """
+        """ expr_int := term_int ('+' term_int | '-' term_int)* """
+        self.term_int()
+        while True:
+            if self.match_current(baslex.TokenType.PLUS) or self.match_current(baslex.TokenType.MINUS):
+                op = self.cur_token
+                self.next_token()
+                self.term_int()
+                self.expr_stack.append(op.text)
+            else:
+                break
+        if self.verbose: print("Int expression =", self.expr_stack)
+
+    def term_int(self):
+        """ term_int := factor_int ('*' factor_int | '/' factor_int)* """
+        self.factor_int()
+        while True:
+            if self.match_current(baslex.TokenType.ASTERISK) or self.match_current(baslex.TokenType.SLASH):
+                op = self.cur_token
+                self.next_token()
+                self.factor_int()
+                self.expr_stack.append(op.text)
+            else:
+                break
+
+    def factor_int(self):
+        """ factor_int := (expr_int) | NUMBER | IDENT """
+        # TODO type checking
         if self.match_current(baslex.TokenType.LPAR):
             self.next_token()
             self.expr_int()
-            if not self.match_current(baslex.TokenType.RPAR):
+            if self.match_current(baslex.TokenType.RPAR):
+                self.next_token()
+            else:
                 self.abort(ErrorCode.SYNTAX)
-            self.next_token()
-        else:
-            self.term_int()
-        
-        if self.cur_token.is_operation():
-            optoken = self.cur_token
-            self.next_token()
-            self.expr_int()
-            self.expr_stack.append(optoken.text)
-
-    def term_int(self):
-        """ term_int := int(NUMBER) | int(IDENT)"""
-        if self.match_current(baslex.TokenType.NUMBER):
+        elif self.match_current(baslex.TokenType.NUMBER):
             self.expr_stack.append(self.cur_token.text)
             self.next_token()
         elif self.match_current(baslex.TokenType.IDENT):
-            # TODO: check symbol type or introduce it if not existing yet
-            self.expr_stack.append('@' + self.cur_token.text)
+            self.expr_stack.append(self.cur_token.text)
             self.next_token()
         else:
-            self.abort(ErrorCode.TYPE)
+            self.abort(ErrorCode.SYNTAX)
