@@ -179,13 +179,20 @@ class BASParser:
 
     def keyword_CLS(self):
         """ keyword_CLS := CLS [# expr_int]"""
-        if self.match_next(baslex.TokenType.STREAM):
-            self.next_token()
+        self.next_token()
+        if self.match_current(baslex.TokenType.STREAM):
             self.next_token()
             self.expr_stack = []
             self.expr_int()
         self.emitter.emit_rtcall('CLS', self.expr_stack)
    
+    def keyword_MODE(self):
+        """ keyword_MODE := MODE expr_int """
+        self.next_token()
+        self.expr_stack = []
+        self.expr_int()
+        self.emitter.emit_rtcall('MODE', self.expr_stack)
+
     def expr_int(self):
         """ expr_int := term_int ('+' term_int | '-' term_int)* """
         self.term_int()

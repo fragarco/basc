@@ -17,7 +17,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 class FW_CALL:
-    TXT_CLEAR_WINDOW = "&6CBB"
+    TXT_CLEAR_WINDOW    = "&BB6C"
+    TXT_CURSOR_ON       = "&BB81"
+    TXT_CURSOR_OFF      = "&BB84"
+    SCR_SET_MODE        = "&BC0E"
 
 class ASMEmitter:
     """
@@ -40,6 +43,7 @@ class ASMEmitter:
         self.emit("org     &%04X" % addr)
 
     def emitend(self):
+        pass
         self.emit("asm_end: jp asm_end")
 
     def emit_rtcall(self, fun, args = []):
@@ -51,6 +55,14 @@ class ASMEmitter:
 
     def rtcall_CLS(self, args):
         self.emit("push    hl")
-        self.emit("call    " + FW_CALL.TXT_CLEAR_WINDOW)
+        self.emit("call    " + FW_CALL.TXT_CLEAR_WINDOW + " ;TXT_CLEAR_WINDOW")
         self.emit("pop     hl")
 
+    def rtcall_MODE(self, args):
+        self.emit("push    af")
+        self.emit("ld      a,%s" % args[0])
+        self.emit("push    hl")
+        self.emit("call    " + FW_CALL.SCR_SET_MODE  + " ;SCR_SET_MODE")
+        self.emit("pop     hl")
+        self.emit("pop     af")
+        pass
