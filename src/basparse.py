@@ -203,7 +203,9 @@ class BASParser:
         """ term_int := factor_int ('*' factor_int | '/' factor_int)* """
         self.factor_int()
         while True:
-            if self.match_current(baslex.TokenType.ASTERISK) or self.match_current(baslex.TokenType.SLASH):
+            if self.match_current(baslex.TokenType.ASTERISK) or \
+               self.match_current(baslex.TokenType.SLASH) or \
+               self.match_current(baslex.TokenType.LSLASH):
                 op = self.cur_token
                 self.next_token()
                 self.factor_int()
@@ -212,7 +214,7 @@ class BASParser:
                 break
 
     def factor_int(self):
-        """ factor_int := (expr_int) | NUMBER | IDENT """
+        """ factor_int := (expr_int) | factor_int MOD factor_int | NUMBER | IDENT """
         # TODO type checking
         if self.match_current(baslex.TokenType.LPAR):
             self.next_token()
@@ -229,3 +231,9 @@ class BASParser:
             self.next_token()
         else:
             self.abort(ErrorCode.SYNTAX)
+
+        if self.match_current(baslex.TokenType.MOD):
+            op = self.cur_token
+            self.next_token()
+            self.factor_int()
+            self.expr_stack.append(op.text)

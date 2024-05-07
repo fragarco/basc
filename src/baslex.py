@@ -80,6 +80,8 @@ class BASLexer:
             return Token(self.cur_char, TokenType.ASTERISK)
         elif self.cur_char == '/':
             return Token(self.cur_char, TokenType.SLASH)
+        elif self.cur_char == '\\':
+            return Token(self.cur_char, TokenType.LSLASH)
         elif self.cur_char == '(':
             return Token(self.cur_char, TokenType.LPAR)
         elif self.cur_char == ')':
@@ -173,14 +175,16 @@ class BASLexer:
             token = self._get_number()
            
         elif self.cur_char.isalpha():
-            # can be an identifier or keyword
+            # can be an identifier, keyword or special operator (like MOD)
             text = self._get_identifier_text()
             keyword = Token.get_keyword(text)
             if keyword != None:
                 token = Token(text, keyword)
+            elif text.upper() == 'MOD':
+                token = Token('%', TokenType.MOD)
             else:
                 # Identifier or label
-                token = Token(text, TokenType.IDENT)   
+                token = Token(text, TokenType.IDENT)
         else:
             self.abort("unexpected character found '" + self.cur_char + "'")
 
@@ -213,7 +217,7 @@ class Token:
     def get_keyword(tktext):
         for tktype in TokenType:
             # Relies on all keyword enum values being 1XX.
-            if tktype.name == tktext and tktype.value > TokenType.ABS.value and tktype.value < TokenType.END_KEYWORDS.value:
+            if tktype.name == tktext and tktype.value > TokenType.ABS.value and tktype.value < TokenType.TK_NUM_OPS.value:
                 return tktype
         return None
 
@@ -229,14 +233,15 @@ class TokenType(enum.Enum):
     """
     Enum for all supported tokens.
     """
-    CODE_EOF = -1
-    NEWLINE = 0
+    TK_VAR_TYPES = 0
     NUMBER = 1
     STRING = 2
-    IDENT = 3
-    STREAM = 4
+    REAL = 3
+    IDENT = 4
+    STREAM = 5
 
     # keywords
+    TK_KEYWORDS = 99
     ABS	= 100
     AFTER = 101
     AND = 102
@@ -408,20 +413,34 @@ class TokenType(enum.Enum):
     XPOS = 268
     YPOS = 269
     ZONE = 270
-    END_KEYWORDS = 500
 
-    PLUS = 501
-    MINUS = 502
-    ASTERISK = 503
-    SLASH = 504
-    LPAR = 505
-    RPAR = 506
-    COLON = 507
-    SEMICOLON = 508
-    EQ = 509
-    NOTEQ = 510
-    LT = 511
-    LTEQ = 512
-    GT = 513
-    GTEQ = 514
-    COMMA = 515
+    # Numeric expression tokens
+    TK_NUM_OPS = 500
+    LPAR = 501
+    RPAR = 502    
+    PLUS = 503
+    MINUS = 504
+    ASTERISK = 505
+    SLASH = 506
+    LSLASH = 507
+    MOD = 508
+
+    # logic operators than can be used in numeric expressions
+    TK_LOGIC_OPS=550
+    LT = 551
+    GT = 552
+    
+    # Extra logic expression tokens
+    TK_EXTRA_LOGIC_OPS=600
+    EQ = 601
+    NOTEQ = 602
+    LTEQ = 603
+    GTEQ = 604
+
+    # Separators
+    TK_SEPARATORS = 700
+    COLON = 701
+    SEMICOLON = 702
+    COMMA = 703
+    CODE_EOF = 704
+    NEWLINE = 705
