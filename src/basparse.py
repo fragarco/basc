@@ -23,7 +23,7 @@ from bastypes import *
 
 class BASParserError(Exception):
     """
-    Raised when procesing a file and error are found.
+    Raised when procesing a file and errors are found.
     """
     def __init__(self, message):
         self.message = message
@@ -61,7 +61,7 @@ class BASParser:
         if self.verbose:
             print("error from", inspect.stack()[1].function + "()")
         print("%s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
-        while not self.match_current(baslex.TokenType.NEWLINE):
+        while not self.match_current(TokenType.NEWLINE):
             self.next_token()
 
     def match_current(self, tktype):
@@ -100,9 +100,9 @@ class BASParser:
     def program(self):
         """program := CODE_EOF | NEWLINE program | codeline program"""
         # Parse all the statements in the program.
-        if self.match_current(baslex.TokenType.CODE_EOF):
+        if self.match_current(TokenType.CODE_EOF):
             self.emitter.emitend()
-        elif self.match_current(baslex.TokenType.NEWLINE):
+        elif self.match_current(TokenType.NEWLINE):
             self.next_token()
             self.program()
         else:
@@ -112,7 +112,7 @@ class BASParser:
 
     def codeline(self):
         """ codeline :=  NUMBER statement """
-        if self.match_current(baslex.TokenType.NUMBER):
+        if self.match_current(TokenType.NUMBER):
             self.next_token()
             self.statement()
         else:
@@ -120,15 +120,15 @@ class BASParser:
 
     def statement(self):
         """ statement = NEWLINE | keyword (NEWLINE | ':' statement) """
-        if self.match_current(baslex.TokenType.NEWLINE):
+        if self.match_current(TokenType.NEWLINE):
             # for example a full line comment
             self.next_token()
         elif self.cur_token.is_keyword():
             self.keyword()
-            if self.match_current(baslex.TokenType.COLON):
+            if self.match_current(TokenType.COLON):
                 self.next_token()
                 self.statement()
-            elif self.match_current(baslex.TokenType.NEWLINE):
+            elif self.match_current(TokenType.NEWLINE):
                 self.next_token()
             else:
                 self.error(ErrorCode.SYNTAX)
@@ -146,7 +146,7 @@ class BASParser:
     def keyword_CLS(self):
         """ keyword_CLS := CLS [# expr_int]"""
         self.next_token()
-        if self.match_current(baslex.TokenType.STREAM):
+        if self.match_current(TokenType.STREAM):
             self.next_token()
             self.expr_stack = []
             self.expr_int()
@@ -163,7 +163,7 @@ class BASParser:
         """ expr_int := term_int ('+' term_int | '-' term_int)* """
         self.term_int()
         while True:
-            if self.match_current(baslex.TokenType.PLUS) or self.match_current(baslex.TokenType.MINUS):
+            if self.match_current(TokenType.PLUS) or self.match_current(TokenType.MINUS):
                 op = self.cur_token
                 self.next_token()
                 self.term_int()
@@ -176,9 +176,9 @@ class BASParser:
         """ term_int := factor_int ('*' factor_int | '/' factor_int)* """
         self.factor_int()
         while True:
-            if self.match_current(baslex.TokenType.ASTERISK) or \
-               self.match_current(baslex.TokenType.SLASH) or \
-               self.match_current(baslex.TokenType.LSLASH):
+            if self.match_current(TokenType.ASTERISK) or \
+               self.match_current(TokenType.SLASH) or \
+               self.match_current(TokenType.LSLASH):
                 op = self.cur_token
                 self.next_token()
                 self.factor_int()
@@ -189,23 +189,23 @@ class BASParser:
     def factor_int(self):
         """ factor_int := (expr_int) | factor_int MOD factor_int | NUMBER | IDENT """
         # TODO type checking
-        if self.match_current(baslex.TokenType.LPAR):
+        if self.match_current(TokenType.LPAR):
             self.next_token()
             self.expr_int()
-            if self.match_current(baslex.TokenType.RPAR):
+            if self.match_current(TokenType.RPAR):
                 self.next_token()
             else:
                 self.abort(ErrorCode.SYNTAX)
-        elif self.match_current(baslex.TokenType.NUMBER):
+        elif self.match_current(TokenType.NUMBER):
             self.expr_stack.append(self.cur_token.text)
             self.next_token()
-        elif self.match_current(baslex.TokenType.IDENT):
+        elif self.match_current(TokenType.IDENT):
             self.expr_stack.append(self.cur_token.text)
             self.next_token()
         else:
             self.abort(ErrorCode.SYNTAX)
 
-        if self.match_current(baslex.TokenType.MOD):
+        if self.match_current(TokenType.MOD):
             op = self.cur_token
             self.next_token()
             self.factor_int()
