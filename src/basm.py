@@ -48,6 +48,7 @@ class AsmContext:
         self.currentfile = "",
         self.currentline = ""
         self.lstcode = ""
+        self.op_funcs = globals()
 
     def parse_logic_expr(self, expr):
         values = re.findall(r'\w+', expr)
@@ -79,7 +80,7 @@ class AsmContext:
         arg = arg.replace('@', '(' + str(self.origin) + ')') # storage location, next address
         arg = arg.replace('%', '0b') # syntax for binary literals
         arg = arg.replace(' MOD ', '%') # Maxam syntax for modulus
-        arg = re.sub(r'&|#([0-9a-fA-F]+\b)', r'0x\g<1>', arg) # hex numbers must start with & or #
+        arg = re.sub(r'&|#|$([0-9a-fA-F]+\b)', r'0x\g<1>', arg) # hex numbers must start with &, $ or #
 
         # fix capitalized hex or binary Python symbol
         # don't do these except at the start of a token
@@ -193,6 +194,12 @@ class AsmContext:
             elif self.get_symbol(label) != self.origin:
                 fatal("label address differs from previous stored value")
 
+    def get_opfunc(self, fname):
+        opfunc = None
+        if fname in self.op_funcs.keys() and callable(self.op_funcs[fname]):
+            opfunc = self.op_funcs[fname] 
+        return opfunc
+
     def store(self, p, bytes):
         if p == 2:
             self.lstcode = ""
@@ -251,51 +258,67 @@ class AsmContext:
         else:
             return 0
 
+    def read_srcfile(self, inputfile):
+        try:
+            fd = open(inputfile, 'r')
+            content = fd.readlines()
+            content.insert(0, '') # prepend blank so line numbers are 1-based
+            fd.close()
+            return content
+        except Exception as e:
+            print(str(e))
+            fatal("Couldn't open file '" + inputfile + "' for reading")
+
+    def get_statements(self, codeline):
+        # remove comments
+        codeline = codeline.strip().split(';')[0]
+        # basic sanity checks
+        statements = []
+        index = 0
+        # one line can contain multiple statements separated by ':'
+        # however label: equ <values> is a special case
+        opcodes = codeline.split(':')
+        while index < len(opcodes):
+            opcode = opcodes[index]
+            opcode = opcode.strip()
+            if opcode != "":
+                # sanity check
+                if opcode.count('"') % 2 != 0 or opcode.count("'") % 2 != 0:
+                    fatal("mismatched quotes")
+                # label: equ <value> exception
+                if (index+ 1) < len(opcodes) and 'EQU 'in opcodes[index+1].upper():
+                    statements.append(opcode + ' ' + opcodes[index + 1])
+                    index = index + 2
+                    continue
+                statements.append(opcode)
+            index = index + 1
+        return statements
+
     def assembler_pass(self, p, inputfile):
         # file references are local, so assembler_pass can be called recursively (op_INCLUDE)
         # but copied to a global identifier in g_context for warning printouts
-
         self.currentfile = "command line"
         self.currentline = "0"
-
-        # just read the whole file into memory, it's not going to be huge (probably)
-        # I'd prefer not to, but assembler_pass can be called recursively
-        # (by op_INCLUDE for example) and fileinput does not support two files simultaneously
-
-        try:
-            currentfile = open(inputfile, 'r')
-            wholefile = currentfile.readlines()
-            wholefile.insert(0, '') # prepend blank so line numbers are 1-based
-            currentfile.close()
-        except:
-            fatal("Couldn't open file '" + inputfile + "' for reading")
-
+        srccode = self.read_srcfile(inputfile)
         linenumber = 0
-        while linenumber < len(wholefile):
-            currentline = wholefile[linenumber].replace("\t", "  ")
-            self.currentline = currentline
-            self.currentfile = inputfile + ":" + str(linenumber)
-            
-            # One line can contain multiple statements separated by ':', for example
-            # loop: jp loop
-            # lets remove comments and check for multi opcodes
-            filteredline = currentline.strip().split(';')[0]
-            statements = filteredline.split(':')
-            for opcode in statements:
-                opcode = opcode.strip()
-                if opcode == '': continue
-                if opcode.count('"') % 2 != 0 or opcode.count("'") % 2 != 0:
-                    fatal("mismatched quotes")
-                
-                bytes = self.assemble_instruction(p, opcode)
+
+        while linenumber < len(srccode):
+            self.currentline = srccode[linenumber].replace("\t", "  ")
+            self.currentfile = inputfile + ":" + str(linenumber)   
+            statements = self.get_statements(self.currentline)
+            for opcode in statements:   
+                incbytes = self.assemble_instruction(p, opcode)
                 if p > 1:
                     lstout = "%06d  %04X  %-13s\t%s" % (linenumber, self.origin, self.lstcode, opcode)
                     self.lstcode = ""
                     self.write_listinfo(lstout)
-                self.origin = (self.origin + bytes) % 65536
+                self.origin = self.origin + incbytes
+                if self.origin > 65536:
+                    fatal("memory full")
 
-            if self.currentfile.startswith(inputfile + ":") and int(self.currentfile.rsplit(':', 1)[1]) != linenumber:
-                linenumber = int(self.currentfile.rsplit(':', 1)[1])
+            storedline = int(self.currentfile.rsplit(':', 1)[1])
+            if self.currentfile.startswith(inputfile + ":") and storedline != linenumber:
+                linenumber = storedline
             linenumber += 1
 
     def assemble(self, inputfile, outputfile, startaddr):
@@ -323,11 +346,11 @@ g_context = AsmContext()
 ###########################################################################
 
 def warning(message):
-    print(os.path.basename("[asm] " + g_context.currentfile), 'warning:', message)
+    print(os.path.basename(g_context.currentfile) + ':', 'warning:', message)
     print('\t', g_context.currentline.strip())
 
 def fatal(message):
-    print(os.path.basename("[asm] " + g_context.currentfile), 'error:', message)
+    print(os.path.basename(g_context.currentfile) + ':', 'error:', message)
     print('\t', g_context.currentline.strip())
     sys.exit(1)
 
@@ -438,7 +461,7 @@ def op_PRINT(p, opargs):
                 text.append(str(a))
             else:
                 text.append("?")
-    print("[asm] " + g_context.currentfile, "PRINT: ", ",".join(text))
+    print(os.path.basename(g_context.currentfile) + ":", "PRINT ", ",".join(text))
     return 0
 
 def op_EQU(p, opargs):
@@ -509,10 +532,12 @@ def op_DW(p, opargs):
 def op_DEFW(p, opargs):
     s = opargs.split(',')
     if p == 2:
+        words = []
         for b in s:
-            b=(g_context.parse_expression(b, word=1))
-            g_context.store(p, [b%256, b//256])
-    return 2*len(s)
+            b = (g_context.parse_expression(b, word=1))
+            words = words + [b%256, b//256]
+        g_context.store(p, words)
+    return 2 * len(s)
 
 def op_DM(p, opargs):
     return op_DEFB(p, opargs)
@@ -1312,7 +1337,7 @@ def assemble(inputfile, outputfile = None, predefsymbols = [], startaddr = 0x400
         try:
             val = aux_int(sym[1])
         except:
-            print("[asm] error: invalid format for command-line symbol definition in" + value)
+            print("Error: invalid format for command-line symbol definition in" + value)
             sys.exit(1)
         g_context.set_symbol(sym[0], aux_int(sym[1]))
 
@@ -1341,7 +1366,7 @@ def process_args():
 def main():
     args = process_args()
     assemble(args.inputfile, args.output, args.define, args.start)
-    print("[asm] OK")
+    print("All OK")
     sys.exit(0)
 
 if __name__ == "__main__":
