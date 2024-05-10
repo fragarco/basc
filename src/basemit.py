@@ -69,6 +69,9 @@ class ASMEmitter:
         if self.npass > 0:
             self.emitdata("asm_end: jp asm_end")
 
+    def emitlinelabel(self, text):
+        self.emitcode('__LINE_' + text + ':')
+
     def emit_rtcall(self, fun, args = []):
         if self.npass > 0:
             fun_cb = getattr(self, "rtcall_" + fun, None)

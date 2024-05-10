@@ -95,54 +95,74 @@ class BASParser:
             self.lexer.reset()
             self.cur_token = self.lexer.get_token()
             self.peek_token = self.lexer.get_token()
-            self.program()
+            self.lines()
             if self.errors:
                 print(self.errors, "error(s) in total")
                 sys.exit(1)
 
     # Production rules.
 
-    def program(self):
-        """program := CODE_EOF | NEWLINE program | codeline program"""
+    def lines(self):
+        """<lines> ::= EOF | NEWLINE <lines> | <line> <lines>"""
         # Parse all the statements in the program.
         if self.match_current(TokenType.CODE_EOF):
+            # End of file
             self.emitter.emitend()
         elif self.match_current(TokenType.NEWLINE):
+            # Empty lines
             self.next_token()
-            self.program()
+            self.lines()
         else:
-            self.codeline()
+            self.line()
             self.emit_srcline()
-            self.program()
+            self.lines()
 
-    def codeline(self):
-        """ codeline :=  NUMBER statement """
-        if self.match_current(TokenType.NUMBER):
-            self.emitter.emitcode('__LINE_' + self.cur_token.text + ':')
+    def line(self):
+        """ <line> := INTEGER NEWLINE | INTEGER <statements> NEWLINE"""
+        if self.match_current(TokenType.INTEGER):
+            self.emitter.emitlinelabel(self.cur_token.text)
             self.next_token()
-            self.statement()
+            if self.match_current(TokenType.NEWLINE):
+                 # This was a full line remark (' or REM) removed by the lexer
+                 # but we emitted the line number in case a GOTO
+                 # or similar statement jumps here
+                 self.next_token()
+            else:
+                self.statements()
+                if self.match_current(TokenType.NEWLINE):
+                    self.next_token()
         else:
             self.error(ErrorCode.SYNTAX)
 
+    def statements(self):
+         """ <statements>  ::= <statement> [':' <statements>] """
+         self.statement()
+         if (self.match_current(TokenType.COLON)):
+              self.statements()
+
     def statement(self):
-        """ statement = NEWLINE | keyword (NEWLINE | ':' statement) """
-        if self.match_current(TokenType.NEWLINE):
-            # for example a full line comment
+        """  <statement> = ID ':' NEWLINE | ID '=' <expression> | <keyword>"""
+        if self.match_current(TokenType.IDENT):
+            symbol = self.cur_token
             self.next_token()
-        elif self.cur_token.is_keyword():
-            self.keyword()
-            if self.match_current(TokenType.COLON):
+            if self.match_current(TokenType.COLON) and self.match_next(TokenType.NEWLINE):
+                # Label in form IDENT: that can be use to jump here from GOTO, GOSUB, etc.
+                # TODO: create Symbol
                 self.next_token()
-                self.statement()
-            elif self.match_current(TokenType.NEWLINE):
+            elif self.match_current(TokenType.EQ):
                 self.next_token()
+                self.expr_stack = []
+                self.expression()
+                print("AAA", symbol.text, '=', self.expr_stack)
             else:
                 self.error(ErrorCode.SYNTAX)
+        elif self.cur_token.is_keyword():
+            self.keyword()
         else:
-            self.error(ErrorCode.UNKNOWN)
+            self.error(ErrorCode.SYNTAX)
 
     def keyword(self):
-        """ keyword := keyword_KEYWORD"""
+        """ <keyword> := COMMAND | FUNCTION """
         keyword_rule = getattr(self, "keyword_" + self.cur_token.text, None)
         if keyword_rule == None:
             self.error(ErrorCode.NOKEYW, ": " + self.cur_token.text)
@@ -150,69 +170,117 @@ class BASParser:
             keyword_rule()
 
     def keyword_CLS(self):
-        """ keyword_CLS := CLS [# expr_int]"""
+        """ keyword_CLS := CLS [# <expression>]"""
         self.next_token()
-        if self.match_current(TokenType.STREAM):
+        if self.match_current(TokenType.CHANNEL):
             self.next_token()
             self.expr_stack = []
-            self.expr_int()
+            self.expression()
         self.emitter.emit_rtcall('CLS', self.expr_stack)
    
     def keyword_MODE(self):
-        """ keyword_MODE := MODE expr_int """
+        """ keyword_MODE := MODE <expression> """
         self.next_token()
         self.expr_stack = []
-        self.expr_int()
+        self.expression()
         self.emitter.emit_rtcall('MODE', self.expr_stack)
 
-    def expr_int(self):
-        """ expr_int := term_int ('+' term_int | '-' term_int)* """
-        self.term_int()
-        while True:
-            if self.match_current(TokenType.PLUS) or self.match_current(TokenType.MINUS):
-                op = self.cur_token
-                self.next_token()
-                self.term_int()
-                self.expr_stack.append(op.text)
-            else:
-                break
-        if self.verbose: print("Int expression =", self.expr_stack)
 
-    def term_int(self):
-        """ term_int := factor_int ('*' factor_int | '/' factor_int)* """
-        self.factor_int()
-        while True:
-            if self.match_current(TokenType.ASTERISK) or \
-               self.match_current(TokenType.SLASH) or \
-               self.match_current(TokenType.LSLASH):
-                op = self.cur_token
-                self.next_token()
-                self.factor_int()
-                self.expr_stack.append(op.text)
-            else:
-                break
+    # Expression rules
+    
+    def expression(self):
+        """ <expression> ::= <or_exp> [XOR <expression>] """
+        self.and_exp()
+        if self.match_current(TokenType.XOR):
+            op = self.cur_token
+            self.next_token()
+            self.expression()
+            self.expr_stack.append(op.text)
 
-    def factor_int(self):
-        """ factor_int := (expr_int) | factor_int MOD factor_int | NUMBER | IDENT """
-        # TODO type checking
+    def or_exp(self):
+        """<or_exp> ::= <and_exp> [OR <or_exp>]"""
+        self.and_exp()
+        if self.match_current(TokenType.AND):
+            op = self.cur_token
+            self.next_token()
+            self.or_exp()
+            self.expr_stack.append(op.text)
+
+    def and_exp(self):
+        """<and_exp> ::= <not_exp> [AND <and_exp>]"""
+        self.not_exp()
+        if self.match_current(TokenType.AND):
+            op = self.cur_token
+            self.next_token()
+            self.and_exp()
+            self.expr_stack.append(op.text)
+
+    def not_exp(self):
+        """<not_exp> ::= [NOT] <compare_exp>"""
+        if self.match_current(TokenType.NOT):
+            op = self.cur_token
+            self.next_token()
+            self.compare_exp()
+            self.expr_stack.append(op.text)
+        else:
+            self.compare_exp()
+
+    def compare_exp(self):
+        """<compare_exp> ::= <add_exp> [('=','<>'.'>','<','>=','<=')  <compare_exp>]"""
+        self.add_exp()
+        if self.cur_token.is_logic_op():
+            op = self.cur_token
+            self.next_token()
+            self.compare_exp()
+            self.expr_stack.append(op.text)
+
+    def add_exp(self):
+        """<add_exp> ::= <mult_exp> [('+'|'-') <add_exp>]"""
+        self.mod_exp()
+        if self.match_current(TokenType.PLUS) or self.match_current(TokenType.MINUS):
+            self.next_token()
+            self.add_exp()
+        
+    def mod_exp(self):
+        """<mod_exp> ::= <mult_exp> [MOD <mod_exp>]"""
+        self.mult_exp()
+        if self.match_current(TokenType.MOD):
+            self.next_token()
+            self.mod_exp()
+    
+    def mult_exp(self):
+        """<mult_exp> ::= <negate_exp> [('*'|'/'|'\\' <mult_exp>] """
+        self.negate_exp()
+        if self.match_current(TokenType.SLASH) or self.match_current(TokenType.LSLASH) or self.match_current(TokenType.ASTERISK):
+            op = self.cur_token
+            self.next_token()
+            self.mult_exp()
+            self.expr_stack.append(op.text)
+
+    def negate_exp(self):
+        """<negate_exp> ::= ['-'] <sub_exp> """
+        if self.match_current(TokenType.MINUS):
+            self.next_token()
+            self.sub_exp()
+            self.expr_stack.append('NEG')
+        else:
+            self.sub_exp()
+
+    def sub_exp(self):
+        """ <sub_exp> ::= '(' <expression> ')' | <value> """
         if self.match_current(TokenType.LPAR):
             self.next_token()
-            self.expr_int()
+            self.expression()
             if self.match_current(TokenType.RPAR):
                 self.next_token()
             else:
-                self.abort(ErrorCode.SYNTAX)
-        elif self.match_current(TokenType.NUMBER):
-            self.expr_stack.append(self.cur_token.text)
-            self.next_token()
-        elif self.match_current(TokenType.IDENT):
-            self.expr_stack.append(self.cur_token.text)
-            self.next_token()
+                self.error(ErrorCode.SYNTAX)
         else:
-            self.abort(ErrorCode.SYNTAX)
+            self.value()
 
-        if self.match_current(TokenType.MOD):
-            op = self.cur_token
-            self.next_token()
-            self.factor_int()
-            self.expr_stack.append(op.text)
+    def value(self):
+        """<value> ::= ID | INTEGER | REAL | STRING | <function>"""
+        # TODO: check operation types and develop function rule
+        self.expr_stack.append(self.cur_token.text)
+        self.next_token()
+

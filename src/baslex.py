@@ -123,9 +123,11 @@ class BASLexer:
         Numeric token.
         """
         start_pos = self.cur_pos
+        tktype = TokenType.INTEGER
         while self.peek().isdigit():
             self.next_char()
-        if self.peek() == '.': # Decimal!
+        if self.peek() == '.': # REAL!
+            tktype = TokenType.REAL
             self.next_char()
             # Must have at least one digit after decimal.
             if not self.peek().isdigit(): 
@@ -133,7 +135,7 @@ class BASLexer:
             while self.peek().isdigit():
                 self.nextChar()
         text = self.source[start_pos : self.cur_pos + 1]
-        return Token(text, TokenType.NUMBER)
+        return Token(text, tktype)
 
     def _get_identifier_text(self):
         """
@@ -177,7 +179,7 @@ class BASLexer:
             token = self._get_quotedtext()
         
         elif self.cur_char == '#':
-            token = Token('#', TokenType.STREAM)
+            token = Token('#', TokenType.CHANNEL)
 
         elif self.cur_char.isdigit():
             token = self._get_number()

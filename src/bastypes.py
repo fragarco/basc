@@ -57,10 +57,11 @@ class TokenType(enum.Enum):
     Enum for all supported tokens.
     """
     TK_VAR_TYPES = 0
-    NUMBER = 1
+    INTEGER = 1
     STRING = 2
     IDENT = 3
-    STREAM = 4
+    CHANNEL = 4
+    REAL = 5
 
     # keywords
     TK_KEYWORDS = 99
@@ -274,7 +275,7 @@ class Token:
     def __init__(self, tktext, tktype):
         self.text = tktext   # The token's actual text. Used for identifiers, strings, and numbers.
         self.type = tktype   # The TokenType that this token is classified as.
-
+ 
     @staticmethod
     def get_keyword(tktext):
         for tktype in TokenType:
@@ -287,9 +288,13 @@ class Token:
         # Check if the token is in the list of keywords.
         return Token.get_keyword(self.text) != None
 
-    def is_operation(self):
-        # Check if the token is in the list of operations.
-        return self.text != '' and self.text in "+-*/"
+    def is_num_op(self):
+        # Check if the token is in the list of numerical operations.
+        return self.text != '' and (self.text in "+-*/\\" or self.text == 'MOD')
+
+    def is_logic_op(self):
+        # Check if the token is in the list of logical operations.
+        return self.text in ['=','<>','>','<','>=','<=']
 
 class Symbol:
     """

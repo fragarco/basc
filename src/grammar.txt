@@ -136,7 +136,7 @@ Real           = {digit}+.{digit}+
 "About"   = 'This is the version of BASIC that was used on the Commodore 64.'
 
 "Case Sensitive" = False 
-"Start Symbol"   = <Lines>
+program ::= <Lines>
 
 {String Chars} = {Printable} - ["]
 {WS}           = {Whitespace} - {CR} - {LF}
@@ -145,12 +145,10 @@ NewLine        = {CR}{LF}|{CR}
 Whitespace     = {WS}+
 
 Remark         = REM{Space}{Printable}*
-ID             = {Letter}{Alphanumeric}?[$%]?      !IDs are can only have a maximum of 2 characters
+ID             = {Letter}{Alphanumeric}?[$%!]?
 FunctionID     = FN {Letter}{Letter}?
 
-String         = '"'{String Chars}*'"' 
-Integer        = {Digit}+ 
-Real           = {Digit}+'.'{Digit}+ 
+<program>     ::= <Lines>
 
 <Lines>       ::= <Lines> <Line>
                 | <Line>
@@ -289,39 +287,50 @@ Real           = {Digit}+'.'{Digit}+
                 | String 
                 | Real 
 
+String         = '"'{String Chars}*'"' 
+Integer        = {Digit}+ 
+Real           = {Digit}+'.'{Digit}+ 
 
-EXPRESSION BNF example
 
-<ADD_OP>   ::= "+" | "-" 
-<MUL_OP>   ::= "*" | "/"
-<POWER_OP> ::= "^"
-<NUMBER>   ::= [0-9]+
-
-/* Just for illustrative purposes, as this production can be left out. */
-<expr> ::= <term>
-
-/* A term is composed of a factor, so factor is parsed/produced first */
-<term> ::= <term> <ADD_OP> <factor>
-    | <factor>
-    
-/* Left associative, so written as left recursive */
-<factor> ::= <factor> <MUL_OP> <power> 
-    | <power>
-    
-/* Right associative, so written as right recursive */
-<power> ::= <unary> <POWER_OP> <power>
-    | <unary>
-    
-<unary> ::= "-" <primary>
-	| <primary>
-    
-/* The leaf nodes……or parenthesized expressions. */
-<primary> ::= <NUMBER>
-    | "(" <expr> ")"
 
 
 
 LOCOMOTIVE BASIC
+
+<lines>       ::= EOF | NEWLINE <lines> | <line> <lines>
+<line>        ::= INTEGER <statements> NEWLINE                 
+<statements>  ::= <statement> [':' <statements>]
+<statement>   ::= ID ':' NEWLINE | ID '=' <expression> | <keyword>
+
+<expression>  ::= <or_exp> [XOR <expression>]
+<or_exp>      ::= <and_exp> [OR <or_exp>]
+<and_exp>     ::= <not_exp> [AND <and_exp>]
+<not_exp>     ::= [NOT] <compare_exp>
+<compare_exp> ::= <add_exp> '='  <compare_exp> 
+                | <add_exp> '<>' <compare_exp> 
+                | <add_exp> '>'  <compare_exp> 
+                | <add_exp> '>=' <compare_exp> 
+                | <add_exp> '<'  <compare_exp> 
+                | <add_exp> '<=' <compare_exp> 
+                | <add_exp> 
+
+<add_exp>     ::= <mod_exp> '+' <add_exp> 
+                | <mod_exp> '-' <add_exp> 
+                | <mod_exp> 
+
+<mod_exp>     ::= <mult_exp> [MOD <mod_exp>]
+
+<mult_exp>    ::= <negate_exp> '*' <mult_exp> 
+                | <negate_exp> '/' <mult_exp> 
+                | <negate_exp> 
+
+<negate_exp>  ::= '-' <power_exp> | <power_exp> 
+<power_exp>   ::= <power_exp> '^' <sub_exp> | <sub_exp> 
+<sub_exp>     ::= '(' <expression> ')' | <value>
+<value>       ::= ID | INTEGER | STRING | REAL | <function>
+
+<keyword>     ::= ???
+<function>    ::= ???
 
 BASIC notation
 
