@@ -16,7 +16,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
-class FW_CALL:
+import baslib
+from bastypes import Symbol, SymbolTable
+
+class FWCALL:
     TXT_CLEAR_WINDOW    = "&BB6C"
     TXT_CURSOR_ON       = "&BB81"
     TXT_CURSOR_OFF      = "&BB84"
@@ -29,40 +32,60 @@ class ASMEmitter:
 
     def __init__(self, outputfile):
         self.outputfile = outputfile
+        self.libcode = []
         self.code = []
+        self.data = []
+        self.npass = 0
+        self.symbols = SymbolTable()
 
     def save_output(self):
         with open(self.outputfile, 'w') as ofd:
+            ofd.writelines(self.libcode)
             ofd.writelines(self.code)
+            ofd.writelines(self.data)
         return self.outputfile
 
-    def emit(self, code):
-        self.code.append(code + '\n')
+    def setpass(self, p, symbolstable):
+        self.npass = p
+        self.symbols = symbolstable
+
+    def emitlibcode(self, code):
+        if self.npass > 0:
+            self.libcode.append(code + '\n')
+
+    def emitcode(self, code):
+        if self.npass > 0:
+            self.code.append(code + '\n')
+
+    def emitdata(self, code):
+        if self.npass > 0:
+            self.data.append(code + '\n')
 
     def emitstart(self, addr = 0x4000):
-        self.emit("org     &%04X" % addr)
+        if self.npass > 0:
+            self.emitlibcode("org     &%04X" % addr)
 
     def emitend(self):
-        pass
-        self.emit("asm_end: jp asm_end")
+        if self.npass > 0:
+            self.emitdata("asm_end: jp asm_end")
 
     def emit_rtcall(self, fun, args = []):
-        fun_cb = getattr(self, "rtcall_" + fun, None)
-        if fun_cb == None:
-            print("Emitter error:", fun, "call is not implemented yet")
-        else:
-            fun_cb(args)
+        if self.npass > 0:
+            fun_cb = getattr(self, "rtcall_" + fun, None)
+            if fun_cb == None:
+                print("Emitter error:", fun, "call is not implemented yet")
+            else:
+                fun_cb(args)
 
     def rtcall_CLS(self, args):
-        self.emit("push    hl")
-        self.emit("call    " + FW_CALL.TXT_CLEAR_WINDOW + " ;TXT_CLEAR_WINDOW")
-        self.emit("pop     hl")
+        self.emitcode("\tpush    hl")
+        self.emitcode("\tcall    " + FWCALL.TXT_CLEAR_WINDOW + " ;TXT_CLEAR_WINDOW")
+        self.emitcode("\tpop     hl")
 
     def rtcall_MODE(self, args):
-        self.emit("push    af")
-        self.emit("ld      a,%s" % args[0])
-        self.emit("push    hl")
-        self.emit("call    " + FW_CALL.SCR_SET_MODE  + " ;SCR_SET_MODE")
-        self.emit("pop     hl")
-        self.emit("pop     af")
-        pass
+        self.emitcode("\tpush    af")
+        self.emitcode("\tld      a,%s" % args[0])
+        self.emitcode("\tpush    hl")
+        self.emitcode("\tcall    " + FWCALL.SCR_SET_MODE  + " ;SCR_SET_MODE")
+        self.emitcode("\tpop     hl")
+        self.emitcode("\tpop     af")

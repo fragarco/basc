@@ -61,13 +61,13 @@ class AsmContext:
         if len(values) == 2:
             operation = "%d %s %d" % (values[0], logic[0], values[1])
             return eval(operation)
-        fatal("evaluating logical expression")
+        abort("evaluating logical expression")
        
     def parse_expression(self, arg, signed=0, byte=0, word=0):
         # WARNING: Maxam is supposed to evaluate operators from left to right (no operator precedence)
         # here we do not do that, so this is a departure from Maxam
         if ',' in arg:
-            fatal("erroneous comma in expression " + arg)
+            abort("erroneous comma in expression " + arg)
 
         while 1:
             # single characters in quotes to integer values
@@ -113,7 +113,7 @@ class AsmContext:
                             # string literal used in some expressions
                             pass
                         else:
-                            fatal("Error in expression " +
+                            abort("Error in expression " +
                                 arg +
                                 ": undefined symbol " +
                                 self.expand_symbol(testsymbol))
@@ -126,7 +126,7 @@ class AsmContext:
                             if digit == '1':
                                 literal += 1
                             elif digit != '0':
-                                fatal("Invalid binary digit '" + digit + "'")
+                                abort("Invalid binary digit '" + digit + "'")
                         testsymbol = str(literal)
 
                     elif testsymbol[0]=='0' and len(testsymbol)>1 and testsymbol[1]!='x':
@@ -186,13 +186,13 @@ class AsmContext:
 
     def process_label(self, p, label):
         if len(label.split()) > 1:
-            fatal("whitespaces are not allowed in label names")
+            abort("whitespaces are not allowed in label names")
 
         if label != "":
             if p == 1:
                 self.set_symbol(label, self.origin, is_label = True)
             elif self.get_symbol(label) != self.origin:
-                fatal("label address differs from previous stored value")
+                abort("label address differs from previous stored value")
 
     def get_opfunc(self, fname):
         opfunc = None
@@ -231,7 +231,7 @@ class AsmContext:
         # Lines must start by characters or underscord or '.'
         match = re.match(r'^(\.\w+|\w+)(.*)', line.strip())
         if not match:
-            fatal("in '" + line + "'. Valid instructions must start with a letter, an underscord or '.'")
+            abort("in '" + line + "'. Valid instructions must start with a letter, an underscord or '.'")
 
         inst = match.group(1).upper()
         args = match.group(2).strip()
@@ -267,7 +267,7 @@ class AsmContext:
             return content
         except Exception as e:
             print(str(e))
-            fatal("Couldn't open file '" + inputfile + "' for reading")
+            abort("Couldn't open file '" + inputfile + "' for reading")
 
     def get_statements(self, codeline):
         # remove comments
@@ -284,7 +284,7 @@ class AsmContext:
             if opcode != "":
                 # sanity check
                 if opcode.count('"') % 2 != 0 or opcode.count("'") % 2 != 0:
-                    fatal("mismatched quotes")
+                    abort("mismatched quotes")
                 # label: equ <value> exception
                 if (index+ 1) < len(opcodes) and 'EQU 'in opcodes[index+1].upper():
                     statements.append(opcode + ' ' + opcodes[index + 1])
@@ -314,7 +314,7 @@ class AsmContext:
                     self.write_listinfo(lstout)
                 self.origin = self.origin + incbytes
                 if self.origin > 65536:
-                    fatal("memory full")
+                    abort("memory full")
 
             storedline = int(self.currentfile.rsplit(':', 1)[1])
             if self.currentfile.startswith(inputfile + ":") and storedline != linenumber:
@@ -349,7 +349,7 @@ def warning(message):
     print(os.path.basename(g_context.currentfile) + ':', 'warning:', message)
     print('\t', g_context.currentline.strip())
 
-def fatal(message):
+def abort(message):
     print(os.path.basename(g_context.currentfile) + ':', 'error:', message)
     print('\t', g_context.currentline.strip())
     sys.exit(1)
@@ -421,7 +421,7 @@ def single(p, arg, allow_i=0, allow_r=0, allow_index=1, allow_offset=1, allow_ha
                 if p == 2:
                     offset = g_context.parse_expression(match.group(2), byte=1, signed=1)
                     if offset < -128 or offset > 127:
-                        fatal ("invalid index offset: "+str(offset))
+                        abort ("invalid index offset: "+str(offset))
                     postfix = [(offset + 256) % 256]
                 else:
                     postfix = [0]
@@ -439,7 +439,7 @@ def check_args(args, expected):
     else:
         received = len(args.split(','))
     if expected != received:
-        fatal("wrong number of arguments, expected "+str(expected)+" but received "+str(args))
+        abort("wrong number of arguments, expected "+str(expected)+" but received "+str(args))
 
 def op_ORG(p, opargs):
     check_args(opargs, 1)
@@ -477,7 +477,7 @@ def op_EQU(p, opargs):
         if existing == '':
             g_context.set_symbol(symbol, expr_result)
         elif existing != expr_result:
-                fatal("Symbol " +
+                abort("Symbol " +
                       g_context.expand_symbol(symbol) +
                       ": expected " + str(existing) +
                       " but calculated " + str(expr_result) +
@@ -488,7 +488,7 @@ def op_NEXT(p, opargs):
     check_args(opargs, 1)
     foritem = g_context.forstack.pop()
     if opargs != foritem[0]:
-        fatal("NEXT symbol " + opargs + " doesn't match FOR: expected " + foritem[0])
+        abort("NEXT symbol " + opargs + " doesn't match FOR: expected " + foritem[0])
     foritem[2] += 1
 
     g_context.set_symbol(foritem[0], foritem[2])
@@ -501,13 +501,13 @@ def op_NEXT(p, opargs):
 def op_ALIGN(p, opargs):
     args = opargs.replace(" ", "").split(",")
     if len(args) < 1:
-        fatal("ALIGN directive requieres at least one value")
+        abort("ALIGN directive requieres at least one value")
     padding = 0 if len(args) == 1 else g_context.parse_expression(args[1])
     align = g_context.parse_expression(args[0])
     if align < 1:
-        fatal("invalid negative alignment")
+        abort("invalid negative alignment")
     elif (align & (-align)) != align:
-        fatal("requested alignment is not a power of 2")
+        abort("requested alignment is not a power of 2")
     s = (align - (g_context.origin % align)) % align
     g_context.store(p, [padding for i in range(0, s)])
     return s
@@ -522,7 +522,7 @@ def op_RMEM(p, opargs):
     check_args(opargs, 1)
     s = g_context.parse_expression(opargs)
     if s < 0:
-        fatal("Allocated invalid space < 0 bytes (" + str(s) + ")")
+        abort("Allocated invalid space < 0 bytes (" + str(s) + ")")
     g_context.store(p, [0 for i in range(0, s)])
     return s
 
@@ -566,7 +566,7 @@ def op_DEFB(p, opargs):
 def op_LET(p, opargs):
     args = opargs.replace(" ", "").upper().split("=")
     if len(args) != 2:
-        fatal("LET directive uses the format SYMBOL=VALUE")
+        abort("LET directive uses the format SYMBOL=VALUE")
     sym, val = args
     val = g_context.parse_expression(val)
     g_context.set_symbol(sym, val, is_let = True)
@@ -575,11 +575,11 @@ def op_LET(p, opargs):
 def op_READ(p, opargs):
     # WinAPE directive to include other assembly source code
     if len(g_context.include_stack) > 5:
-        fatal("too deep read/include tree")
+        abort("too deep read/include tree")
 
     path = re.search(r'(?<=["\'])(.*?)(?=["\'])', opargs)
     if path == None or os.path.exists(path.group(0)):
-        fatal("wrong path specified in the READ directive")
+        abort("wrong path specified in the READ directive")
     g_context.include_stack.append(g_context.currentfile)
     filename = os.path.join(os.path.dirname(g_context.currentfile), path.group(0))
     g_context.assembler_pass(p, filename)
@@ -591,7 +591,7 @@ def op_INCBIN(p, opargs):
     # incbin "file", offset, size
     path = re.search(r'(?<=["\'])(.*?)(?=["\'])', opargs)
     if path == None or os.path.exists(path.group(0)):
-        fatal("wrong path specified in the INCBIN directive")
+        abort("wrong path specified in the INCBIN directive")
 
     filename = os.path.join(os.path.dirname(g_context.currentfile), path.group(0))
     args = opargs.split(',')
@@ -601,7 +601,7 @@ def op_INCBIN(p, opargs):
             content = fd.read()
         nbytes = len(content) - offset if len(args) < 3 else g_context.parse_expression(args[2].strip())
     except:
-        fatal("cannot read the content of the binary file")
+        abort("cannot read the content of the binary file")
     content = content[offset: offset + nbytes]
     g_context.store(p, content)
     return len(content)
@@ -630,7 +630,7 @@ def op_ASSERT(p,opargs):
     if (p==2):
         value = g_context.parse_expression(opargs)
         if value == 0:
-            fatal("Assertion failed ("+opargs+")")
+            abort("Assertion failed ("+opargs+")")
     return 0
 
 
@@ -743,11 +743,11 @@ def op_cbshifts_type(p, opargs, offset, step_per_register=1):
         pre1, r1, post1 = single(p, args[0], allow_half=0, allow_index=0)
         pre2, r2, post2 = single(p, args[1], allow_half=0, allow_index=1)
         if r1 == -1 or r2 == -1:
-            fatal("registers not recognized for compound instruction")
+            abort("registers not recognized for compound instruction")
         if r1 == 6:
-            fatal("(HL) not allowed as target of compound instruction")
+            abort("(HL) not allowed as target of compound instruction")
         if len(pre2) == 0:
-            fatal("must use index register as operand of compound instruction")
+            abort("must use index register as operand of compound instruction")
 
         instr=pre2
         instr.extend([0xcb])
@@ -760,7 +760,7 @@ def op_cbshifts_type(p, opargs, offset, step_per_register=1):
         instr.extend([0xcb])
         instr.extend(post)
         if r == -1:
-            fatal("invalid argument")
+            abort("invalid argument")
         else:
             instr.append(offset + step_per_register * r)
     if p == 2:
@@ -803,7 +803,7 @@ def op_register_arg_type(p, opargs, offset, ninstr, step_per_register=1):
     if r == -1:
         match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", opargs)
         if match:
-            fatal ("illegal indirection")
+            abort ("illegal indirection")
 
         instr.extend(ninstr)
         if p == 2:
@@ -864,7 +864,7 @@ def op_registerorpair_arg_type(p, opargs, rinstr, rrinstr, step_per_register=8, 
     if r==-1:
         pre,rr = double(opargs)
         if rr==-1:
-            fatal ("Invalid argument")
+            abort ("Invalid argument")
 
         instr = pre
         instr.append(rrinstr + step_per_pair * rr)
@@ -893,7 +893,7 @@ def op_add_type(p, opargs, rinstr, ninstr, rrinstr, step_per_register=1, step_pe
         if r == -1:
             match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", args[-1])
             if match:
-                fatal("illegal indirection")
+                abort("illegal indirection")
             instr.extend(ninstr)
             if p == 2:
                 n = g_context.parse_expression (args[-1], byte=1)
@@ -909,12 +909,12 @@ def op_add_type(p, opargs, rinstr, ninstr, rrinstr, step_per_register=1, step_pe
         dummy, rr2 = double(args[1])
 
         if rr1 == rr2 and pre != dummy:
-            fatal("Can't mix index registers and HL")
+            abort("Can't mix index registers and HL")
         if len(rrinstr) > 1 and pre:
-            fatal("can't use index registers in this instruction")
+            abort("can't use index registers in this instruction")
 
         if len(args) != 2 or rr1 != 2 or rr2 == -1:
-            fatal("invalid argument")
+            abort("invalid argument")
         instr = pre
         instr.extend(rrinstr)
         instr[-1] += step_per_pair * rr2
@@ -937,10 +937,10 @@ def op_bit_type(p,opargs,offset):
     arg1,arg2 = opargs.split(',',1)
     b = g_context.parse_expression(arg1)
     if b>7 or b<0:
-        fatal ("argument out of range")
+        abort ("argument out of range")
     pre,r,post = single(p, arg2,allow_half=0)
     if r==-1:
-        fatal ("Invalid argument")
+        abort ("Invalid argument")
     instr = pre
     instr.append(0xcb)
     instr.extend(post)
@@ -963,7 +963,7 @@ def op_pushpop_type(p,opargs,offset):
     prefix, rr = double(opargs, allow_af_instead_of_sp=1)
     instr = prefix
     if rr==-1:
-        fatal ("Invalid argument")
+        abort ("Invalid argument")
     else:
         instr.append(offset + 16 * rr)
     if (p==2):
@@ -983,12 +983,12 @@ def op_jumpcall_type(p, opargs, offset, condoffset):
     else:
         cond = condition(args[0])
         if cond == -1:
-            fatal ("expected condition but received '" + opargs + "'")
+            abort ("expected condition but received '" + opargs + "'")
         instr = [condoffset + 8 * cond]
 
     match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", args[-1])
     if match:
-        fatal ("Illegal indirection")
+        abort ("Illegal indirection")
 
     if p == 2:
         nn = g_context.parse_expression(args[-1], word=1)
@@ -1016,7 +1016,7 @@ def op_DJNZ(p,opargs):
         target = g_context.parse_expression(opargs,word=1)
         displacement = target - (g_context.origin + 2)
         if displacement > 127 or displacement < -128:
-            fatal ("Displacement from "+str(g_context.origin)+" to "+str(target)+" is out of range")
+            abort ("Displacement from "+str(g_context.origin)+" to "+str(target)+" is out of range")
         g_context.store(p, [0x10,(displacement+256)%256])
     return 2
 
@@ -1027,15 +1027,15 @@ def op_JR(p, opargs):
     else:
         cond = condition(args[0].strip().upper())
         if cond == -1:
-            fatal("expected condition but received '" + opargs + "'")
+            abort("expected condition but received '" + opargs + "'")
         elif cond >= 4:
-            fatal ("Invalid condition for JR")
+            abort ("Invalid condition for JR")
         instr = 0x20 + 8 * cond
     if p == 2:
         target = g_context.parse_expression(args[-1], word=1)
         displacement = target - (g_context.origin + 2)
         if displacement > 127 or displacement < -128:
-            fatal ("Displacement from " + str(g_context.origin) +
+            abort ("Displacement from " + str(g_context.origin) +
                    " to " + str(target)+" is out of range")
         g_context.store(p, [instr, (displacement + 256) % 256])
     return 2
@@ -1048,7 +1048,7 @@ def op_RET(p, opargs):
         check_args(opargs, 1)
         cond = condition(opargs)
         if cond == -1:
-            fatal ("expected condition but received '" + opargs + "'")
+            abort ("expected condition but received '" + opargs + "'")
         if p == 2:
             g_context.store(p, [0xc0 + 8 * cond])
     return 1
@@ -1058,7 +1058,7 @@ def op_IM(p, opargs):
     if (p==2):
         mode = g_context.parse_expression(opargs)
         if mode > 2 or mode < 0:
-            fatal ("argument out of range")
+            abort ("argument out of range")
         if mode > 0:
             mode += 1
         g_context.store(p, [0xed, 0x46 + 8*mode])
@@ -1069,7 +1069,7 @@ def op_RST(p, opargs):
     if p == 2:
         vector = g_context.parse_expression(opargs)
         if vector > 0x38 or vector < 0 or (vector % 8) != 0:
-            fatal ("argument out of range or doesn't divide by 8")
+            abort ("argument out of range or doesn't divide by 8")
         g_context.store(p, [0xc7 + vector])
     return 1
 
@@ -1083,7 +1083,7 @@ def op_EX(p, opargs):
             instr = pre2
             instr.append(0xe3)
         else:
-            fatal("can't exchange " + args[0].strip() + " with " + args[1].strip())
+            abort("can't exchange " + args[0].strip() + " with " + args[1].strip())
     else:
         pre1, rr1 = double(args[0], allow_af_instead_of_sp=1, allow_index=0)
         pre2, rr2 = double(args[1], allow_af_instead_of_sp=1, allow_af_alt=1, allow_index=0)
@@ -1095,7 +1095,7 @@ def op_EX(p, opargs):
         elif rr1 == 3 and rr2 == 4:
             instr = [0x08]
         else:
-            fatal("can't exchange " + args[0].strip() + " with " + args[1].strip())
+            abort("can't exchange " + args[0].strip() + " with " + args[1].strip())
     if p == 2:
         g_context.store(p, instr)
     return len(instr)
@@ -1110,12 +1110,12 @@ def op_IN(p, opargs):
         elif r == 7:
             match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", args[1])
             if match == None:
-                fatal("no expression in " + args[1])
+                abort("no expression in " + args[1])
 
             n = g_context.parse_expression(match.group(1))
             g_context.store(p, [0xdb, n])
         else:
-            fatal("invalid argument")
+            abort("invalid argument")
     return 2
 
 def op_OUT(p, opargs):
@@ -1130,7 +1130,7 @@ def op_OUT(p, opargs):
             n = g_context.parse_expression(match.group(1))
             g_context.store(p, [0xd3, n])
         else:
-            fatal("invalid argument")
+            abort("invalid argument")
     return 2
 
 def op_LD(p,opargs):
@@ -1207,19 +1207,19 @@ def op_LD(p,opargs):
                     elif r1==9:
                         g_context.store(p, [0xed,0x4f])
                         return 2
-                fatal("Invalid argument")
+                abort("Invalid argument")
 
             if r1==6 and r2==6:
-                fatal("Ha - nice try. That's a HALT.")
+                abort("Ha - nice try. That's a HALT.")
 
             if (r1==4 or r1==5) and (r2==4 or r2==5) and prefix1 != prefix2:
-                fatal("Illegal combination of operands")
+                abort("Illegal combination of operands")
 
             if r1==6 and (r2==4 or r2==5) and len(prefix2) != 0:
-                fatal("Illegal combination of operands")
+                abort("Illegal combination of operands")
 
             if r2==6 and (r1==4 or r1==5) and len(prefix1) != 0:
-                fatal("Illegal combination of operands")
+                abort("Illegal combination of operands")
 
             instr = prefix1
             if len(prefix1) == 0:
@@ -1232,7 +1232,7 @@ def op_LD(p,opargs):
 
         else:
             if r1 > 7:
-                fatal("Invalid argument")
+                abort("Invalid argument")
 
             if r1==7 and re.search(r"\A\s*\(\s*BC\s*\)\s*\Z", arg2, re.IGNORECASE):
                 g_context.store(p, [0x0a])
@@ -1243,7 +1243,7 @@ def op_LD(p,opargs):
             match = re.search(r"\A\s*\(\s*(.*)\s*\)\s*\Z", arg2)
             if match:
                 if r1 != 7:
-                    fatal("Illegal indirection")
+                    abort("Illegal indirection")
                 if p==2:
                     nn = g_context.parse_expression(match.group(1), word=1)
                     g_context.store(p, [0x3a, nn%256, nn//256])
@@ -1274,7 +1274,7 @@ def op_LD(p,opargs):
                 nn = g_context.parse_expression(match.group(1), word=1)
                 g_context.store(p, [0x32, nn%256, nn//256])
             return 3
-    fatal("LD args not understood - "+arg1+", "+arg2)
+    abort("LD args not understood - "+arg1+", "+arg2)
     return 1
 
 def op_IF(p, opargs):
@@ -1303,7 +1303,7 @@ def op_ELSE(p, opargs):
         else:
             g_context.ifstate = IFSTATE_ASSEMBLE
     else:
-        fatal("mismatched ELSE/ELSEIF directive")
+        abort("mismatched ELSE/ELSEIF directive")
     return 0
 
 def op_ELSEIF(p, opargs):
@@ -1314,7 +1314,7 @@ def op_ENDIF(p, opargs):
     check_args(opargs, 0)
 
     if len(g_context.ifstack) == 0:
-        fatal("Mismatched ENDIF")
+        abort("Mismatched ENDIF")
 
     _, state = g_context.ifstack.pop()
     g_context.ifstate = state

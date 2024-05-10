@@ -59,9 +59,8 @@ class TokenType(enum.Enum):
     TK_VAR_TYPES = 0
     NUMBER = 1
     STRING = 2
-    REAL = 3
-    IDENT = 4
-    STREAM = 5
+    IDENT = 3
+    STREAM = 4
 
     # keywords
     TK_KEYWORDS = 99
@@ -291,3 +290,57 @@ class Token:
     def is_operation(self):
         # Check if the token is in the list of operations.
         return self.text != '' and self.text in "+-*/"
+
+class Symbol:
+    """
+    symbols can be variables or labels. Variables point to values
+    of type INT, REAL or STR.
+    """
+
+    SYMVAR   = 0
+    SYMLAB   = 1
+
+    VINT    = 0
+    VSTR    = 1
+    VREAL   = 2
+    VNONE   = 3
+
+    def __init__(self, sname, stype):
+        self.symbol = sname
+        self.symtype = stype
+        self.value = None
+        self.valtype = Symbol.VNONE
+        self.extrainfo = None
+        self.puts = 0
+        self.gets = 0
+    
+    def set_value(self, value, valtype):
+        self.value = value
+        self.valtype = valtype
+    
+    def is_var(self):
+        return self.type == Symbol.SYMVAR
+    
+    def inc_reads(self):
+        """ To control the number of times the symbol value is used """
+        self.gets = self.gets + 1
+
+    def inc_writes(self):
+        """ To control the number of times the symbol value is changed """
+        self.puts = self.puts + 1
+
+class SymbolTable:
+    """ table of symbols found during the compilation process """
+
+    def __init__(self):
+        self.symbols = {}
+    
+    def add(self, sname, stype):
+        symbol = Symbol(sname, stype)
+        self.symbols[sname] = symbol
+        return symbol
+
+    def search(self, sname):
+        if sname in self.symbols.keys():
+            return self.symbols[sname]
+        return None

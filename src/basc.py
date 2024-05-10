@@ -16,6 +16,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import sys
+import os
 import argparse
 import baspp
 import baslex
@@ -47,13 +48,12 @@ def main():
         emitter = basemit.ASMEmitter(args.out + '.asm')
         parser = basparse.BASParser(lexer, emitter, args.verbose)
         parser.parse()
-        if not parser.errors:
-            asmfile = emitter.save_output()
-            basm.assemble(asmfile)
-        else:
-            print(parser.errors, "errors in total")
+        asmfile = emitter.save_output()
+        basm.assemble(asmfile)
     except Exception as e:
-        print(str(e))
+        _, _, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print("Fatal error:", str(e), "in", fname, exc_tb.tb_lineno)
 
 if __name__ == "__main__":
     main()

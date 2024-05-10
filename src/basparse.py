@@ -17,50 +17,46 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
+import sys
+import os
 import baslex
 import inspect
-from bastypes import *
-
-class BASParserError(Exception):
-    """
-    Raised when procesing a file and errors are found.
-    """
-    def __init__(self, message):
-        self.message = message
-
-    def __str__(self):
-        return self.message
+from bastypes import Symbol, SymbolTable, TokenType, ErrorCode
 
 class BASParser:
     """
     A BASParser object keeps track of current token, checks if the code matches the grammar,
     and emits code along the way if an emitter has been set.
+    To resolve forward declarations (jump points), the parser does two passes. In the
+    first pass, the emitter doesn't really emit any code but this allows the parser
+    to construct the whole symbols table.
     """
     def __init__(self, lexer, emitter, verbose):
         self.lexer = lexer
         self.emitter = emitter
         self.verbose = verbose
         self.errors = 0
+        self.npass = 0
 
-        self.symbols = {}           # All variables we have declared so far.
-        self.labels_declared = {}   # Keep track of all labels declared
-        self.labels_used = {}       # All labels goto'ed, so we know if they exist or not.
+        self.symbols = SymbolTable()
         self.expr_stack = []
 
     def abort(self, message, extrainfo = ""):
         self.errors = self.errors + 1
         filename, linenum, line = self.lexer.get_currentcode()
+        filename = os.path.basename(filename)
         if self.verbose:
             print("abort signal from", inspect.stack()[1].function + "()")
-        errmsg = "Fatal error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo)
-        raise BASParserError(errmsg)
+        print("Fatal error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
+        sys.exit(1)
     
     def error(self, message, extrainfo = ""):
         self.errors = self.errors + 1
         filename, linenum, line = self.lexer.get_currentcode()
+        filename = os.path.basename(filename)
         if self.verbose:
             print("error from", inspect.stack()[1].function + "()")
-        print("%s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
+        print("error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
         while not self.match_current(TokenType.NEWLINE):
             self.next_token()
 
@@ -85,15 +81,24 @@ class BASParser:
 
     def emit_srcline(self):
         _, _, line = self.lexer.get_currentcode()
-        self.emitter.emit("; " + line.strip())
+        self.emitter.emitcode("")
+        self.emitter.emitcode("; " + line.strip())
 
     def parse(self):
         # lets leave the first line of code ready
-        self.emitter.emitstart()
-        self.emit_srcline()
-        self.cur_token = self.lexer.get_token()
-        self.peek_token = self.lexer.get_token()
-        self.program()
+        for p in [0, 1]:
+            self.npass = p
+            self.lexer.reset()
+            self.emitter.setpass(p, self.symbols)
+            self.emitter.emitstart()
+            self.emit_srcline()
+            self.lexer.reset()
+            self.cur_token = self.lexer.get_token()
+            self.peek_token = self.lexer.get_token()
+            self.program()
+            if self.errors:
+                print(self.errors, "error(s) in total")
+                sys.exit(1)
 
     # Production rules.
 
@@ -113,6 +118,7 @@ class BASParser:
     def codeline(self):
         """ codeline :=  NUMBER statement """
         if self.match_current(TokenType.NUMBER):
+            self.emitter.emitcode('__LINE_' + self.cur_token.text + ':')
             self.next_token()
             self.statement()
         else:

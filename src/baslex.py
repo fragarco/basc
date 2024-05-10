@@ -15,22 +15,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
-from bastypes import *
-
-class BASLexError(Exception):
-    """
-    Raised when procesing a file and its format is not the expected one.
-    """
-    def __init__(self, message, file = "", line = -1):
-        self.message = message
-        self.line = line
-        self.file = file
-
-    def __str__(self):
-        if self.line != -1:
-            return "[baslex] Error: %s\n\tfile %s line %d" % (self.message, self.file, self.line)
-        else:
-            return "[baslex] Error: %s" % self.message
+import sys
+from bastypes import TokenType, Token
     
 class BASLexer:
     """
@@ -38,8 +24,15 @@ class BASLexer:
     """
     def __init__(self, code):
         self.orgcode = code
-        # pass code to lex as a string. Append a newline to simplify lexing/parsing the last token/statement.
-        self.source = ''.join(l for _, _, l in code) + '\n'
+        self.reset()
+
+    def reset(self):
+        """
+        Sets the code as a continuous string, appends a newline to
+        simplify lexing/parsing the last token/statement and points
+        to the first char in the code.
+        """
+        self.source = ''.join(l for _, _, l in self.orgcode) + '\n'
         self.cur_char = ''   # Current character in the string.
         self.cur_pos = -1    # Current position in the string.
         self.cur_line = 0
@@ -52,7 +45,10 @@ class BASLexer:
         return self.orgcode[self.cur_line]
 
     def next_char(self):
-        """Process the next character."""
+        """
+        Points to the next character in the source code.
+        Returns 0 if end-of-file is reached
+        """
         self.cur_pos += 1
         if self.cur_pos >= len(self.source):
             self.cur_char = '\0'  # EOF
@@ -60,17 +56,19 @@ class BASLexer:
             self.cur_char = self.source[self.cur_pos]
 
     def peek(self):
-        """Return the lookahead character."""
+        """Returns the lookahead character"""
         if self.cur_pos + 1 >= len(self.source):
             return '\0'
         return self.source[self.cur_pos + 1]
 
-    def abort(self, message):
-        """raise error message adding file name and original file number"""
+    def abort(self, message, extrainfo = ""):
+        """Stops with an error message adding file name and original file number"""
         file, linenum, _ = self.orgcode[self.cur_line]
-        raise BASLexError(message, file, linenum)
+        print("Fatal error in %s:%d: %s -> %s %s" % (file, linenum, self.cur_line.strip(), message, extrainfo))
+        sys.exit(1)
 
     def _get_operator(self):
+        """ Returns a token describing an operator (numeric o logical)"""
         if self.cur_char == '+':
             return Token(self.cur_char, TokenType.PLUS)
         elif self.cur_char == '-':
@@ -96,7 +94,7 @@ class BASLexer:
             else:
                 return Token(self.cur_char, TokenType.GT)
         elif self.cur_char == '<':
-            # Check whether this is token is < or <=
+            # Check whether this token is < or <=
             last_char = self.cur_char
             if self.peek() == '=':
                 self.next_char()
@@ -109,7 +107,7 @@ class BASLexer:
         return None
 
     def _get_quotedtext(self):
-         # Get characters between quotations.
+        """ Returns all characters between quotations as a STRING token"""
         self.next_char()
         start_pos = self.cur_pos
         while self.cur_char != '\"':
@@ -120,7 +118,10 @@ class BASLexer:
         return Token(text, TokenType.STRING)
 
     def _get_number(self):
-         # Get all consecutive digits and decimal if there is one.
+        """
+        Returns all consecutive digits (and decimal if there is one) as a
+        Numeric token.
+        """
         start_pos = self.cur_pos
         while self.peek().isdigit():
             self.next_char()
@@ -135,17 +136,25 @@ class BASLexer:
         return Token(text, TokenType.NUMBER)
 
     def _get_identifier_text(self):
+        """
+        Returns all characters that compose a valid word. Words can be
+        labels, variables or keywords.
+        """
         start_pos = self.cur_pos
         while self.peek().isalnum():
             self.next_char()
         return self.source[start_pos : self.cur_pos + 1].upper()
 
     def get_token(self):
+        """
+        Consumes source code characters until a valid Token can be created or
+        an error is raised.
+        """
         self.lstrip()
         self.skip_comment()
         token = None
 
-        # Check the first character of this token to see if we can decide what it is.
+        # Check current pointed character to see if we can decide what it is.
         if self.cur_char == '\n':
             token = Token('', TokenType.NEWLINE)
 
