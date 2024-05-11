@@ -17,7 +17,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import baslib
-from bastypes import Symbol, SymbolTable
+from bastypes import Symbol, SymbolTable, Expression, BASTypes
 
 class FWCALL:
     TXT_CLEAR_WINDOW    = "&BB6C"
@@ -69,8 +69,12 @@ class ASMEmitter:
         if self.npass > 0:
             self.emitdata("asm_end: jp asm_end")
 
-    def emitlinelabel(self, text):
-        self.emitcode('__LINE_' + text + ':')
+    def emitlabel(self, text):
+        self.emitcode('__LABEL_' + text + ':')
+
+    def emitassign(self, symbol, expr):
+        if self.npass > 0:
+            self.emitcode('; ' + symbol + " = " + str(expr))
 
     def emit_rtcall(self, fun, args = []):
         if self.npass > 0:

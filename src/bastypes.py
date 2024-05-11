@@ -26,6 +26,7 @@ class ErrorCode:
     NOWEND  = "WEND missing"
     NORESUME= "RESUME missing"
     NOLINE  = "Line does not exist"
+    NOIDENT = "Undeclared indentifier"
     LINELEN = "Line too long"
     NOOP    = "Operand missing"
     SYNTAX  = "Syntax Error"
@@ -50,8 +51,9 @@ class ErrorCode:
     FILEOPEN= "File already open"
     NOFILE  = "File not open"
     BROKEN  = "Broken in"
-    NOKEYW   = "Keyword not implemented"
-
+    NOKEYW  = "Keyword not implemented"
+    LEXISTS = "Label already defined"
+    
 class TokenType(enum.Enum):
     """
     Enum for all supported tokens.
@@ -296,35 +298,38 @@ class Token:
         # Check if the token is in the list of logical operations.
         return self.text in ['=','<>','>','<','>=','<=']
 
+class BASTypes(enum.Enum):
+    INT     = 0
+    REAL    = 1
+    STR     = 2
+    NONE    = 3
+
+class SymTypes(enum.Enum):
+    SYMVAR   = 0
+    SYMLAB   = 1
+
 class Symbol:
     """
     symbols can be variables or labels. Variables point to values
     of type INT, REAL or STR.
     """
 
-    SYMVAR   = 0
-    SYMLAB   = 1
-
-    VINT    = 0
-    VSTR    = 1
-    VREAL   = 2
-    VNONE   = 3
-
     def __init__(self, sname, stype):
         self.symbol = sname
         self.symtype = stype
         self.value = None
-        self.valtype = Symbol.VNONE
+        self.valtype = BASTypes.NONE
         self.extrainfo = None
         self.puts = 0
         self.gets = 0
     
-    def set_value(self, value, valtype):
-        self.value = value
-        self.valtype = valtype
+    def set_value(self, expr):
+        self.value = expr.expr
+        self.valtype = expr.type
+        self.inc_writes()
     
     def is_var(self):
-        return self.type == Symbol.SYMVAR
+        return self.type == SymTypes.SYMVAR
     
     def inc_reads(self):
         """ To control the number of times the symbol value is used """
@@ -333,6 +338,13 @@ class Symbol:
     def inc_writes(self):
         """ To control the number of times the symbol value is changed """
         self.puts = self.puts + 1
+
+    def print(self):
+        print(self.symbol + ' -', self.symtype, ':', self.valtype, self.value)
+        print("\treads:", self.gets, "writes:", self.puts)
+
+    def __str__(self):
+        return str(self.symbol) + ' - ' + str(self.symtype) + ': ' + str(self.valtype) + ' ' + str(self.value)
 
 class SymbolTable:
     """ table of symbols found during the compilation process """
@@ -349,3 +361,43 @@ class SymbolTable:
         if sname in self.symbols.keys():
             return self.symbols[sname]
         return None
+
+class Expression:
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.expr = []
+        self.type = BASTypes.INT
+
+    def check_types(self, bastype):
+        if bastype.value < BASTypes.STR.value and self.type.value < BASTypes.STR.value:
+            # both are numeric types
+            return True
+        elif bastype == BASTypes.STR and self.type == BASTypes.STR:
+            # both are strings
+            return True
+        return False
+
+    def check_op(self, op):
+        if self.type == BASTypes.STR:
+            # permited operators on strings are:
+            validops = ['+', '=', '>', '<', '<>', '>=', '<=']
+            return op in validops
+        # numeric types supports all operators
+        return True
+
+    def pushval(self, symbol, bastype):
+        self.expr.append(symbol)
+        if self.check_types(bastype):
+            self.type = bastype
+            return True
+        return False
+    
+    def pushop(self, symbol):
+        self.expr.append(symbol)
+        return self.check_op(symbol)
+
+    def __str__(self):
+        return str(self.expr) + " of type " + str(self.type)
