@@ -89,9 +89,9 @@ class ASMEmitter:
         self.emitcode("\tcall    " + FWCALL.TXT_CLEAR_WINDOW + " ;TXT_CLEAR_WINDOW")
         self.emitcode("\tpop     hl")
 
-    def rtcall_MODE(self, args):
+    def rtcall_MODE(self, expr):
         self.emitcode("\tpush    af")
-        self.emitcode("\tld      a,%s" % args[0])
+        self.emitcode("\tld      a,%s" % expr.expr[0])
         self.emitcode("\tpush    hl")
         self.emitcode("\tcall    " + FWCALL.SCR_SET_MODE  + " ;SCR_SET_MODE")
         self.emitcode("\tpop     hl")

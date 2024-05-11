@@ -39,10 +39,10 @@ class BASLexer:
         self.last_token = None
         self.next_char()
 
-    def get_currentcode(self):
-        if self.cur_line >= len(self.orgcode):
+    def get_srccode(self, linenum):
+        if linenum >= len(self.orgcode):
             return (self.orgcode[0][0], -1, "EOF")
-        return self.orgcode[self.cur_line]
+        return self.orgcode[linenum]
 
     def next_char(self):
         """
@@ -70,40 +70,40 @@ class BASLexer:
     def _get_operator(self):
         """ Returns a token describing an operator (numeric o logical)"""
         if self.cur_char == '+':
-            return Token(self.cur_char, TokenType.PLUS)
+            return Token(self.cur_char, TokenType.PLUS, self.cur_line)
         elif self.cur_char == '-':
-            return Token(self.cur_char, TokenType.MINUS)
+            return Token(self.cur_char, TokenType.MINUS, self.cur_line)
         elif self.cur_char == '*':
-            return Token(self.cur_char, TokenType.ASTERISK)
+            return Token(self.cur_char, TokenType.ASTERISK, self.cur_line)
         elif self.cur_char == '/':
-            return Token(self.cur_char, TokenType.SLASH)
+            return Token(self.cur_char, TokenType.SLASH, self.cur_line)
         elif self.cur_char == '\\':
-            return Token(self.cur_char, TokenType.LSLASH)
+            return Token(self.cur_char, TokenType.LSLASH, self.cur_line)
         elif self.cur_char == '(':
-            return Token(self.cur_char, TokenType.LPAR)
+            return Token(self.cur_char, TokenType.LPAR, self.cur_line)
         elif self.cur_char == ')':
-            return Token(self.cur_char, TokenType.RPAR)
+            return Token(self.cur_char, TokenType.RPAR, self.cur_line)
         elif self.cur_char == '=':
-            return Token(self.cur_char, TokenType.EQ)
+            return Token(self.cur_char, TokenType.EQ, self.cur_line)
         elif self.cur_char == '>':
             # Check whether this is token is > or >=
             if self.peek() == '=':
                 last_char = self.cur_char
                 self.next_char()
-                return Token(last_char + self.cur_char, TokenType.GTEQ)
+                return Token(last_char + self.cur_char, TokenType.GTEQ, self.cur_line)
             else:
-                return Token(self.cur_char, TokenType.GT)
+                return Token(self.cur_char, TokenType.GT, self.cur_line)
         elif self.cur_char == '<':
             # Check whether this token is < or <=
             last_char = self.cur_char
             if self.peek() == '=':
                 self.next_char()
-                return Token(last_char + self.cur_char, TokenType.LTEQ)
+                return Token(last_char + self.cur_char, TokenType.LTEQ, self.cur_line)
             elif self.peek() == '>':
                 self.next_char()
-                return Token(last_char + self.cur_char, TokenType.NOTEQ)
+                return Token(last_char + self.cur_char, TokenType.NOTEQ, self.cur_line)
             else:
-                return Token(self.cur_char, TokenType.LT)
+                return Token(self.cur_char, TokenType.LT, self.cur_line)
         return None
 
     def _get_quotedtext(self):
@@ -115,7 +115,7 @@ class BASLexer:
             if self.cur_char == '\n':
                 self.abort("strings must be enclosed in quotation marks")
         text = self.source[start_pos : self.cur_pos]
-        return Token(text, TokenType.STRING)
+        return Token(text, TokenType.STRING, self.cur_line)
 
     def _get_number(self):
         """
@@ -135,7 +135,7 @@ class BASLexer:
             while self.peek().isdigit():
                 self.nextChar()
         text = self.source[start_pos : self.cur_pos + 1]
-        return Token(text, tktype)
+        return Token(text, tktype, self.cur_line)
 
     def _get_identifier_text(self):
         """
@@ -158,19 +158,19 @@ class BASLexer:
 
         # Check current pointed character to see if we can decide what it is.
         if self.cur_char == '\n':
-            token = Token('', TokenType.NEWLINE)
+            token = Token('', TokenType.NEWLINE, self.cur_line)
 
         elif self.cur_char == '\0':
-            token = Token('', TokenType.CODE_EOF)
+            token = Token('', TokenType.CODE_EOF, self.cur_line)
 
         elif self.cur_char == ':':
-            token = Token(':', TokenType.COLON)
+            token = Token(':', TokenType.COLON, self.cur_line)
 
         elif self.cur_char == ';':
-            token = Token(';', TokenType.SEMICOLON)
+            token = Token(';', TokenType.SEMICOLON, self.cur_line)
 
         elif self.cur_char == ',':
-            token = Token(',', TokenType.COMMA)
+            token = Token(',', TokenType.COMMA, self.cur_line)
 
         elif self.cur_char in "+-*/=><()":
             token = self._get_operator()
@@ -179,7 +179,7 @@ class BASLexer:
             token = self._get_quotedtext()
         
         elif self.cur_char == '#':
-            token = Token('#', TokenType.CHANNEL)
+            token = Token('#', TokenType.CHANNEL, self.cur_line)
 
         elif self.cur_char.isdigit():
             token = self._get_number()
@@ -189,12 +189,12 @@ class BASLexer:
             text = self._get_identifier_text()
             keyword = Token.get_keyword(text)
             if keyword != None:
-                token = Token(text, keyword)
+                token = Token(text, keyword, self.cur_line)
             elif text.upper() == 'MOD':
-                token = Token('%', TokenType.MOD)
+                token = Token('%', TokenType.MOD, self.cur_line)
             else:
                 # Identifier or label
-                token = Token(text, TokenType.IDENT)
+                token = Token(text, TokenType.IDENT, self.cur_line)
         else:
             self.abort("unexpected character found '" + self.cur_char + "'")
 

@@ -274,10 +274,11 @@ class Token:
     """
     This class helps to store the original text and the type of a token.
     """
-    def __init__(self, tktext, tktype):
+    def __init__(self, tktext, tktype, srcline):
         self.text = tktext   # The token's actual text. Used for identifiers, strings, and numbers.
         self.type = tktype   # The TokenType that this token is classified as.
- 
+        self.srcline = srcline
+
     @staticmethod
     def get_keyword(tktext):
         for tktype in TokenType:

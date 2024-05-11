@@ -38,21 +38,23 @@ class BASParser:
         self.errors = 0
         self.npass = 0
 
+        self.cur_token = None
+        self.peek_token = None
         self.symbols = SymbolTable()
         self.cur_expr = Expression()
 
-    def abort(self, message, extrainfo = ""):
+    def abort(self, srcline, message, extrainfo = ""):
         self.errors = self.errors + 1
-        filename, linenum, line = self.lexer.get_currentcode()
+        filename, linenum, line = self.lexer.get_srccode(srcline)
         filename = os.path.basename(filename)
         if self.verbose:
             print("abort signal from", inspect.stack()[1].function + "()")
         print("Fatal error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
         sys.exit(1)
     
-    def error(self, message, extrainfo = ""):
+    def error(self, srcline, message, extrainfo = ""):
         self.errors = self.errors + 1
-        filename, linenum, line = self.lexer.get_currentcode()
+        filename, linenum, line = self.lexer.get_srccode(srcline)
         filename = os.path.basename(filename)
         if self.verbose:
             print("error from", inspect.stack()[1].function + "()")
@@ -80,7 +82,8 @@ class BASParser:
             )
 
     def emit_srcline(self):
-        _, _, line = self.lexer.get_currentcode()
+        self.cur_token
+        _, _, line = self.lexer.get_srccode(self.cur_token.srcline)
         self.emitter.emitcode("")
         self.emitter.emitcode("; " + line.strip())
 
@@ -88,8 +91,8 @@ class BASParser:
     # fully created when pass 1 starts and can be used to emit code
     def symtab_addlabel(self, symbol):
         if self.npass == 0:
-            if self.symbols.search(symbol):
-                self.error(ErrorCode.LEXISTS)
+            if self.symbols.search(symbol.text):
+                self.error(symbol.srcline, ErrorCode.LEXISTS)
             else:
                 self.symbols.add(symbol, SymTypes.SYMLAB)
 
@@ -108,7 +111,6 @@ class BASParser:
             self.lexer.reset()
             self.emitter.setpass(p, self.symbols)
             self.emitter.emitstart()
-            self.emit_srcline()
             self.lexer.reset()
             self.cur_token = self.lexer.get_token()
             self.peek_token = self.lexer.get_token()
@@ -124,6 +126,7 @@ class BASParser:
         # Parse all the statements in the program.
         if self.match_current(TokenType.CODE_EOF):
             # End of file
+            self.emit_srcline()
             self.emitter.emitend()
         elif self.match_current(TokenType.NEWLINE):
             # Empty lines
@@ -131,11 +134,11 @@ class BASParser:
             self.lines()
         else:
             self.line()
-            self.emit_srcline()
             self.lines()
 
     def line(self):
         """ <line> := INTEGER NEWLINE | INTEGER <statements> NEWLINE"""
+        self.emit_srcline()
         if self.match_current(TokenType.INTEGER):
             self.emitter.emitlabel('LINE' + self.cur_token.text)
             self.next_token()
@@ -149,7 +152,7 @@ class BASParser:
                 if self.match_current(TokenType.NEWLINE):
                     self.next_token()
         else:
-            self.error(ErrorCode.SYNTAX)
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
     def statements(self):
          """ <statements>  ::= <statement> [':' <statements>] """
@@ -175,22 +178,22 @@ class BASParser:
                     entry = self.symtab_addident(symbol.text)
                 else:
                     if not self.cur_expr.check_types(entry.valtype):
-                        self.error(ErrorCode.TYPE)
+                        self.error(symbol.srcline, ErrorCode.TYPE)
                         return
                 entry.set_value(self.cur_expr)
                 self.emitter.emitassign(symbol.text, self.cur_expr)
             else:
-                self.error(ErrorCode.SYNTAX)
+                self.error(symbol.srcline, ErrorCode.SYNTAX)
         elif self.cur_token.is_keyword():
             self.keyword()
         else:
-            self.error(ErrorCode.SYNTAX)
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
     def keyword(self):
         """ <keyword> := COMMAND | FUNCTION """
         keyword_rule = getattr(self, "keyword_" + self.cur_token.text, None)
         if keyword_rule == None:
-            self.error(ErrorCode.NOKEYW, ": " + self.cur_token.text)
+            self.error(self.cur_token.srcline, ErrorCode.NOKEYW, ": " + self.cur_token.text, )
         else:
             keyword_rule()
 
@@ -219,7 +222,7 @@ class BASParser:
             self.next_token()
             self.expression()
             if not self.cur_expr.pushop(op.text):
-                self.error(ErrorCode.TYPE)
+                self.error(op.srcline, ErrorCode.TYPE)
 
     def or_term(self):
         """<or_term> ::= <and_term> [OR <or_term>]"""
@@ -229,7 +232,7 @@ class BASParser:
             self.next_token()
             self.or_term()
             if not self.cur_expr.pushop(op.text):
-                self.error(ErrorCode.TYPE)
+                self.error(op.srcline, ErrorCode.TYPE)
 
     def and_term(self):
         """<and_term> ::= <not_term> [AND <and_term>]"""
@@ -239,7 +242,7 @@ class BASParser:
             self.next_token()
             self.and_term()
             if not self.cur_expr.pushop(op.text):
-                self.error(ErrorCode.TYPE)
+                self.error(ErrorCode.TYPE, op.srcline)
 
     def not_term(self):
         """<not_term> ::= [NOT] <compare_term>"""
@@ -248,7 +251,7 @@ class BASParser:
             self.next_token()
             self.compare_term()
             if not self.cur_expr.pushop(op.text):
-                self.error(ErrorCode.TYPE)
+                self.error(op.srcline, ErrorCode.TYPE)
         else:
             self.compare_term()
 
@@ -260,7 +263,7 @@ class BASParser:
             self.next_token()
             self.compare_term()
             if not self.cur_expr.pushop(op.text):
-                self.error(ErrorCode.TYPE)
+                self.error(ErrorCode.TYPE, op.srcline)
 
     def add_term(self):
         """<add_term> ::= <mod_term> [('+'|'-') <add_term>]"""
@@ -270,7 +273,7 @@ class BASParser:
             self.next_token()
             self.add_term()
             if not self.cur_expr.pushop(op.text):
-                self.error(ErrorCode.TYPE)
+                self.error(op.srcline, ErrorCode.TYPE)
 
     def mod_term(self):
         """<mod_term> ::= <mult_term> [MOD <mod_term>]"""
@@ -290,27 +293,29 @@ class BASParser:
             self.next_token()
             self.mult_term()
             if not self.cur_expr.pushop(op.text):
-                self.error(ErrorCode.TYPE)
+                self.error(op.srcline, ErrorCode.TYPE)
 
     def negate_term(self):
         """<negate_term> ::= ['-'] <sub_term> """
         if self.match_current(TokenType.MINUS):
+            op = self.cur_token
             self.next_token()
             self.sub_term()
             if not self.cur_expr.pushop('NEG'):
-                self.error(ErrorCode.TYPE)
+                self.error(op.srcline, ErrorCode.TYPE)
         else:
             self.sub_term()
 
     def sub_term(self):
         """ <sub_term> ::= '(' <expression> ')' | <factor> """
         if self.match_current(TokenType.LPAR):
+            partoken = self.cur_token
             self.next_token()
             self.expression()
             if self.match_current(TokenType.RPAR):
                 self.next_token()
             else:
-                self.error(ErrorCode.SYNTAX)
+                self.error(ErrorCode.SYNTAX, partoken.srcline)
         else:
             self.factor()
 
@@ -323,24 +328,24 @@ class BASParser:
                     sym.inc_reads()
                     self.next_token()
                 else:
-                    self.error(ErrorCode.TYPE)
+                    self.error(self.cur_token.srcline, ErrorCode.TYPE)
             else:
-                self.error(ErrorCode.NOIDENT)
+                self.error(self.cur_token.srcline, ErrorCode.NOIDENT)
         elif self.match_current(TokenType.INTEGER):
             if self.cur_expr.pushval(self.cur_token.text, BASTypes.INT):
                 self.next_token()
             else:
-                self.error(ErrorCode.TYPE)
+                self.error(self.cur_token.srcline, ErrorCode.TYPE)
         elif self.match_current(TokenType.REAL):
             if self.cur_expr.pushval(self.cur_token.text, BASTypes.REAL):
                 self.next_token()
             else:
-                self.error(ErrorCode.TYPE)
+                self.error(self.cur_token.srcline, ErrorCode.TYPE)
         elif self.match_current(TokenType.STRING):
             if self.cur_expr.pushval(self.cur_token.text, BASTypes.STR):
                 self.next_token()
             else:
-                self.error(ErrorCode.TYPE)
+                self.error(self.cur_token.srcline, ErrorCode.TYPE)
         else:
             #TODO functions
-            self.error("functions in expressions are not supported yet")
+            self.error(self.cur_token.srcline, "functions in expressions are not supported yet")
