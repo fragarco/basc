@@ -212,8 +212,8 @@ class BASParser:
     # Expression rules
 
     def expression(self):
-        """ <expression> ::= <or_exp> [XOR <expression>] """
-        self.and_exp()
+        """ <expression> ::= <or_term> [XOR <expression>] """
+        self.or_term()
         if self.match_current(TokenType.XOR):
             op = self.cur_token
             self.next_token()
@@ -221,89 +221,89 @@ class BASParser:
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
 
-    def or_exp(self):
-        """<or_exp> ::= <and_exp> [OR <or_exp>]"""
-        self.and_exp()
+    def or_term(self):
+        """<or_term> ::= <and_term> [OR <or_term>]"""
+        self.and_term()
         if self.match_current(TokenType.AND):
             op = self.cur_token
             self.next_token()
-            self.or_exp()
+            self.or_term()
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
 
-    def and_exp(self):
-        """<and_exp> ::= <not_exp> [AND <and_exp>]"""
-        self.not_exp()
+    def and_term(self):
+        """<and_term> ::= <not_term> [AND <and_term>]"""
+        self.not_term()
         if self.match_current(TokenType.AND):
             op = self.cur_token
             self.next_token()
-            self.and_exp()
+            self.and_term()
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
 
-    def not_exp(self):
-        """<not_exp> ::= [NOT] <compare_exp>"""
+    def not_term(self):
+        """<not_term> ::= [NOT] <compare_term>"""
         if self.match_current(TokenType.NOT):
             op = self.cur_token
             self.next_token()
-            self.compare_exp()
+            self.compare_term()
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
         else:
-            self.compare_exp()
+            self.compare_term()
 
-    def compare_exp(self):
-        """<compare_exp> ::= <add_exp> [('=','<>'.'>','<','>=','<=')  <compare_exp>]"""
-        self.add_exp()
+    def compare_term(self):
+        """<compare_term> ::= <add_term> [('=','<>'.'>','<','>=','<=')  <compare_term>]"""
+        self.add_term()
         if self.cur_token.is_logic_op():
             op = self.cur_token
             self.next_token()
-            self.compare_exp()
+            self.compare_term()
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
 
-    def add_exp(self):
-        """<add_exp> ::= <mult_exp> [('+'|'-') <add_exp>]"""
-        self.mod_exp()
+    def add_term(self):
+        """<add_term> ::= <mod_term> [('+'|'-') <add_term>]"""
+        self.mod_term()
         if self.match_current(TokenType.PLUS) or self.match_current(TokenType.MINUS):
             op = self.cur_token
             self.next_token()
-            self.add_exp()
+            self.add_term()
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
 
-    def mod_exp(self):
-        """<mod_exp> ::= <mult_exp> [MOD <mod_exp>]"""
-        self.mult_exp()
+    def mod_term(self):
+        """<mod_term> ::= <mult_term> [MOD <mod_term>]"""
+        self.mult_term()
         if self.match_current(TokenType.MOD):
             op = self.cur_token
             self.next_token()
-            self.mod_exp()
+            self.mod_term()
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
 
-    def mult_exp(self):
-        """<mult_exp> ::= <negate_exp> [('*'|'/'|'\\' <mult_exp>] """
-        self.negate_exp()
+    def mult_term(self):
+        """<mult_term> ::= <negate_term> [('*'|'/'|'\\' <mult_term>] """
+        self.negate_term()
         if self.match_current(TokenType.SLASH) or self.match_current(TokenType.LSLASH) or self.match_current(TokenType.ASTERISK):
             op = self.cur_token
             self.next_token()
-            self.mult_exp()
+            self.mult_term()
             if not self.cur_expr.pushop(op.text):
                 self.error(ErrorCode.TYPE)
 
-    def negate_exp(self):
-        """<negate_exp> ::= ['-'] <sub_exp> """
+    def negate_term(self):
+        """<negate_term> ::= ['-'] <sub_term> """
         if self.match_current(TokenType.MINUS):
             self.next_token()
-            self.sub_exp()
+            self.sub_term()
             if not self.cur_expr.pushop('NEG'):
                 self.error(ErrorCode.TYPE)
         else:
-            self.sub_exp()
+            self.sub_term()
 
-    def sub_exp(self):
-        """ <sub_exp> ::= '(' <expression> ')' | <value> """
+    def sub_term(self):
+        """ <sub_term> ::= '(' <expression> ')' | <factor> """
         if self.match_current(TokenType.LPAR):
             self.next_token()
             self.expression()
@@ -312,10 +312,10 @@ class BASParser:
             else:
                 self.error(ErrorCode.SYNTAX)
         else:
-            self.value()
+            self.factor()
 
-    def value(self):
-        """<value> ::= ID | INTEGER | REAL | STRING | <function>"""
+    def factor(self):
+        """<factor> ::= ID | INTEGER | REAL | STRING | <function>"""
         if self.match_current(TokenType.IDENT):
             sym = self.symbols.search(self.cur_token.text)
             if sym != None:
