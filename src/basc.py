@@ -15,13 +15,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
-import sys
-import os
 import argparse
 import baspp
 import baslex
 import basparse
 import basemit
+import basz80asm
 import basm
 
 def process_args():
@@ -39,21 +38,21 @@ def main():
     args = process_args()
     if args.out == None:
         args.out = args.infile.rsplit('.')[0]
-    # try:
+
     pp = baspp.BASPreprocessor()
     code = pp.preprocess(args.infile, 10)
     pp.save_output(args.out + '.bpp', [c for _, _, c in code])
     
     lexer = baslex.BASLexer(code)
-    emitter = basemit.ASMEmitter(args.out + '.asm')
+    emitter = basemit.ISMEmitter()
     parser = basparse.BASParser(lexer, emitter, args.verbose)
     parser.parse()
-    asmfile = emitter.save_output()
-    basm.assemble(asmfile)
-    #except Exception as e:
-    #    _, _, exc_tb = sys.exc_info()
-    #    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-    #    print("Fatal error:", str(e), "in", fname, exc_tb.tb_lineno)
+    
+    asmout = args.out + '.asm'
+    backend = basz80asm.Z80Backend()
+    backend.save_output(asmout, emitter.icode, parser.symbols)
+    basm.assemble(asmout)
+
 
 if __name__ == "__main__":
     main()

@@ -36,7 +36,6 @@ class BASParser:
         self.emitter = emitter
         self.verbose = verbose
         self.errors = 0
-        self.npass = 0
 
         self.cur_token = None
         self.peek_token = None
@@ -81,43 +80,27 @@ class BASParser:
                 None if self.cur_token == None else self.cur_token.text
             )
 
-    def emit_srcline(self):
-        self.cur_token
-        _, _, line = self.lexer.get_srccode(self.cur_token.srcline)
-        self.emitter.emitcode("")
-        self.emitter.emitcode("; " + line.strip())
-
-    # SymbolTable management happens only during pass 0, so it is
-    # fully created when pass 1 starts and can be used to emit code
     def symtab_addlabel(self, symbol):
-        if self.npass == 0:
-            if self.symbols.search(symbol.text):
-                self.error(symbol.srcline, ErrorCode.LEXISTS)
-            else:
-                self.symbols.add(symbol, SymTypes.SYMLAB)
+        if self.symbols.search(symbol.text):
+            self.error(symbol.srcline, ErrorCode.LEXISTS)
+        else:
+            self.symbols.add(symbol, SymTypes.SYMLAB)
 
     def symtab_addident(self, symbol):
-        if self.npass == 0:
-            # check if symbol exists (nothing to do)
-            entry = self.symbols.search(symbol)
-            if entry == None:
-                entry = self.symbols.add(symbol, SymTypes.SYMVAR)
-            return entry
+        # check if symbol exists (nothing to do)
+        entry = self.symbols.search(symbol)
+        if entry == None:
+            entry = self.symbols.add(symbol, SymTypes.SYMVAR)
+        return entry
 
     def parse(self):
-        # lets leave the first line of code ready
-        for p in [0, 1]:
-            self.npass = p
-            self.lexer.reset()
-            self.emitter.setpass(p, self.symbols)
-            self.emitter.emitstart()
-            self.lexer.reset()
-            self.cur_token = self.lexer.get_token()
-            self.peek_token = self.lexer.get_token()
-            self.lines()
-            if self.errors:
-                print(self.errors, "error(s) in total")
-                sys.exit(1)
+        self.lexer.reset()
+        self.cur_token = self.lexer.get_token()
+        self.peek_token = self.lexer.get_token()
+        self.lines()
+        if self.errors:
+            print(self.errors, "error(s) in total")
+            sys.exit(1)
 
     # Production rules.
 
@@ -126,8 +109,7 @@ class BASParser:
         # Parse all the statements in the program.
         if self.match_current(TokenType.CODE_EOF):
             # End of file
-            self.emit_srcline()
-            self.emitter.emitend()
+            pass
         elif self.match_current(TokenType.NEWLINE):
             # Empty lines
             self.next_token()
@@ -138,9 +120,7 @@ class BASParser:
 
     def line(self):
         """ <line> := INTEGER NEWLINE | INTEGER <statements> NEWLINE"""
-        self.emit_srcline()
         if self.match_current(TokenType.INTEGER):
-            self.emitter.emitlabel('LINE' + self.cur_token.text)
             self.next_token()
             if self.match_current(TokenType.NEWLINE):
                  # This was a full line remark (' or REM) removed by the lexer
@@ -168,7 +148,6 @@ class BASParser:
             self.next_token()
             if self.match_current(TokenType.COLON) and self.match_next(TokenType.NEWLINE):
                 self.symtab_addlabel(symbol)
-                self.emitter.emitlabel(symbol)
                 self.next_token()
             elif self.match_current(TokenType.EQ):
                 self.next_token()
@@ -181,7 +160,6 @@ class BASParser:
                         self.error(symbol.srcline, ErrorCode.TYPE)
                         return
                 entry.set_value(self.cur_expr)
-                self.emitter.emitassign(symbol.text, self.cur_expr)
             else:
                 self.error(symbol.srcline, ErrorCode.SYNTAX)
         elif self.cur_token.is_keyword():
@@ -203,13 +181,11 @@ class BASParser:
         if self.match_current(TokenType.CHANNEL):
             self.next_token()
             self.expression()
-        self.emitter.emit_rtcall('CLS', self.cur_expr)
    
     def keyword_MODE(self):
         """ keyword_MODE := MODE <expression> """
         self.next_token()
         self.expression()
-        self.emitter.emit_rtcall('MODE', self.cur_expr)
 
 
     # Expression rules
