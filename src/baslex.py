@@ -199,8 +199,8 @@ class BASLexer:
             self.abort("unexpected character found '" + self.cur_char + "'")
 
         self.next_char()
-        if self.last_token != None and self.last_token.type == TokenType.NEWLINE:
-             # we are processing a new line of the src code
+        if token.type == TokenType.NEWLINE:
+             # we are going to start a new line of code
              self.cur_line = self.cur_line + 1
         self.last_token = token
         return token

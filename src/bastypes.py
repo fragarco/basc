@@ -358,10 +358,16 @@ class SymbolTable:
         self.symbols[sname] = symbol
         return symbol
 
+    def get(self, sname):
+        return self.symbols[sname]
+
     def search(self, sname):
         if sname in self.symbols.keys():
             return self.symbols[sname]
         return None
+
+    def getsymbols(self):
+        return self.symbols.keys()
 
 class Expression:
 

@@ -1,5 +1,6 @@
 """
-Library of fragments of code used by emitters
+Library of fragments of code that implements the stack machine intermediate
+code in Z80 assembler.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

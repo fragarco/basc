@@ -61,6 +61,13 @@ class BASParser:
         while not self.match_current(TokenType.NEWLINE):
             self.next_token()
 
+    def get_curcode(self):
+        _, _, line = self.lexer.get_srccode(self.cur_token.srcline)
+        return line 
+    
+    def get_linelabel(self, num):
+        return f'__LABEL_LINE_{num}'
+
     def match_current(self, tktype):
         """Return true if the current token matches."""
         return tktype == self.cur_token.type
@@ -121,11 +128,11 @@ class BASParser:
     def line(self):
         """ <line> := INTEGER NEWLINE | INTEGER <statements> NEWLINE"""
         if self.match_current(TokenType.INTEGER):
+            self.emitter.remark(self.get_curcode())
+            self.emitter.label(self.get_linelabel(self.cur_token.text))
             self.next_token()
             if self.match_current(TokenType.NEWLINE):
                  # This was a full line remark (' or REM) removed by the lexer
-                 # but we emitted the line number in case a GOTO
-                 # or similar statement jumps here
                  self.next_token()
             else:
                 self.statements()
@@ -160,6 +167,8 @@ class BASParser:
                         self.error(symbol.srcline, ErrorCode.TYPE)
                         return
                 entry.set_value(self.cur_expr)
+                self.emitter.expression(self.cur_expr)
+                self.emitter.store(symbol.text)
             else:
                 self.error(symbol.srcline, ErrorCode.SYNTAX)
         elif self.cur_token.is_keyword():

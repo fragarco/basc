@@ -44,13 +44,13 @@ def main():
     pp.save_output(args.out + '.bpp', [c for _, _, c in code])
     
     lexer = baslex.BASLexer(code)
-    emitter = basemit.ISMEmitter()
+    emitter = basemit.SMEmitter()
     parser = basparse.BASParser(lexer, emitter, args.verbose)
     parser.parse()
     
     asmout = args.out + '.asm'
     backend = basz80asm.Z80Backend()
-    backend.save_output(asmout, emitter.icode, parser.symbols)
+    backend.save_output(asmout, emitter.code, parser.symbols)
     basm.assemble(asmout)
 
 

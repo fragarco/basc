@@ -17,7 +17,369 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import basz80lib
-from bastypes import Symbol, SymbolTable, Expression, BASTypes
+from bastypes import BASTypes
+
+# Stack machine to Z80 code fragments 
+SM2Z80 = {
+'NOP': [],
+'LABEL': ["$ARG1:"],
+'REM': ["; $ARG1"], 
+'PUSH': ["push hl"],
+'CLEAR': ["ld hl,0"],
+'DROP': ["pop de"],
+'LDVAL': ["ld hl,$ARG1"],
+'LDADDR': ["ld hl,$ARG1"],
+'LDLREF': [
+    "ld hl,$ARG1",
+    "push ix",
+    "pop de",
+    "add hl,de"
+    ],
+'LDGLOB': ["ld hl,($ARG1)"],
+'LDLOCL': [
+    "ld h,(ix+H)",
+    "ld l,(ix+L)"
+    ],
+'STGLOB': ["ld ($ARG1),hl"],
+'STLOCL': [
+    "ld (ix+H),h",
+	"ld (ix+L),l"
+    ],
+'STINDR': [
+    "ex de,hl",
+    "pop hl",
+    "ld (hl),e",
+    "inc hl",
+	"ld (hl),d"
+    ],
+'STINDB': [
+    "ex de,hl",
+    "pop hl",
+	"ld (hl),e"
+    ],
+'INCGLOB': [
+    "ld hl,$ARG1",
+    "inc (hl)",
+    "jrnz +2",
+    "inc hl",
+    "inc (hl)"
+    ],
+'INCLOCL': [
+    "inc (ix+L)",
+    "jrnz +3",
+    "inc (ix+H)"
+    ],
+'INCR': [
+    "ld de,$ARG1",
+    "add hl,de"
+    ],
+'STACK': [
+    "ld hl,$ARG1",
+    "add hl,sp",
+    "ld sp,hl"
+    ],
+'UNSTACK': [
+    "ex de,hl",
+    "ld hl,$ARG1",
+	"add hl,sp",
+    "ld sp,hl",
+	"ex de,hl"
+    ],
+'LOCLVEC': ["push hl"],
+'GLOBVEC': ["ld ($ARG1),hl"],
+'INDEX': [
+    "add hl,hl",
+    "pop de",
+	"add hl,de"
+    ],
+'DEREF': [
+    "ld a,(hl)",
+    "inc hl",
+	"ld h,(hl)",
+    "ld l,a"
+    ],
+'INDXB': [
+    "pop de",
+    "add hl,de"
+    ],
+'DREFB': [
+    "ld l,(hl)",
+    "ld h,0"
+    ],
+'CALL': ["call $ARG1"],
+'CALR': ["call &014A"],  # AAA Revisar
+'JUMP': ["jp $ARG1"],
+'RJUMP': ["jr $ARG1"],  # being $ARG1 = $L in original code
+'JMPFALSE': [
+    "ld a,h",
+    "or l",
+	"jpz $ARG1"
+    ],
+'JMPTRUE': [
+    "ld a,h",
+    "or l",
+	"jpnz $ARG1"
+    ],
+'FOR': [
+    "pop de",
+    "ex de,hl",
+	"xor a",
+    "sbc hl,de",
+    "jpp $ARG1"
+    ],
+'FORDOWN': [
+    "pop de",
+    "xor a",
+	"sbc hl,de",
+    "jpp $ARG1"
+    ],
+'MKFRAME': [
+    "push ix",
+    "ld ix,0",
+	"add ix,sp"
+    ],
+'DELFRAME': ["pop ix"],
+'RET': ["ret"],
+'HALT': ["jp 0"],
+'NEG': [
+    "ld de,0",
+    "ex de,hl",
+	"xor a",
+    "sbc hl,de"
+    ],
+'INV': [
+    "ld de,&FFFF",
+	"ex de,hl",
+    "xor a",
+	"sbc hl,de"
+    ],
+'LOGNOT': [
+    "ex de,hl",
+	"ld hl,&FFFF",
+    "ld a,d",
+	"or e",
+    "jrnz +1",
+    "inc hl"
+    ],
+'ADD': [
+    "pop de",
+    "add hl,de"
+    ],
+'SUB': [
+    "pop de",
+    "ex de,hl",
+    "xor a",
+    "sbc hl,de"
+    ],
+'MUL': [
+    "pop de",
+    "call &0108"  # AAA Revisar
+    ],
+'DIV': [
+    "pop de",
+    "call &010B"  # AAA Revisar
+    ],
+'MOD': [        
+    "pop de",
+    "call &010E"  # AAA Revisar
+    ],
+'AND': [
+    "pop de",
+    "ld a,h",
+	"and d",
+    "ld h,a",
+	"ld a,l",
+    "and e",
+	"ld l,a"
+    ],
+'OR': [
+    "pop de",
+    "ld a,h",
+	"or d",
+    "ld h,a",
+	"ld a,l",
+    "or e",
+	"ld l,a"
+    ],
+'XOR': [
+    "pop de",
+    "ld a,h",
+	"xor d",
+    "ld h,a",
+	"ld a,l",
+    "xor e",
+	"ld l,a"
+    ],
+'SHL': [
+    "pop de",
+    "ex de,hl",
+    "ld b,e",
+    "add hl,hl",
+	"djnz -3"
+    ],
+'SHR': [
+    "pop de",
+    "ex de,hl",
+	"ld b,e",
+    "srl h",
+	"rr l",
+    "djnz -6"
+    ],
+'EQ': [
+    "pop de",
+    "xor a"
+    "sbc hl,de",
+	"ld hl,&FFFF",
+	"jrz +1",
+    "inc hl"
+    ],
+'NE': [
+    "pop de",
+    "xor a",
+	"sbc hl,de",
+	"ld hl,&FFFF",
+	"jrnz +1",
+    "inc hl"
+    ],
+'LT': [
+    "pop de",
+    "ex de,hl",
+	"call &0117", # AAA revisar
+	"ld hl,&FFFF",
+	"jrc +1",
+    "inc hl"
+    ],
+'GT': [
+    "pop de",
+    "call &0117", # AAA revisar
+	"ld hl,&FFFF",
+	"jrc +1",
+    "inc hl"
+    ],
+'LE': [
+    "pop de",
+    "call &0117",
+    "ld hl,0",
+    "jrc +1",
+    "dec hl"
+    ],
+'GE': [
+    "pop de",
+    "ex de,hl",
+	"call &0117", # AAA revisar
+    "ld hl,0",
+    "jrc +1",
+    "dec hl"
+    ],
+'UMUL': [
+    "pop de",
+    "call &0111" # AAA revisar
+    ],
+'UDIV': [
+    "pop de",
+    "ex de,hl",
+    "call &0114" # AAA revisar
+    ],
+'ULT': [
+    "pop de",
+    "ex de,hl",
+    "xor a",
+    "sbc hl,de",
+	"ld hl,&FFFF",
+	"jrc +1",
+    "inc hl"
+    ],
+'UGT': [
+    "pop de",
+    "xor a",
+    "sbc hl,de",
+	"ld hl,&FFFF",
+	"jrc +1",
+    "inc hl"
+    ],
+'ULE': [
+    "pop de",
+    "xor a",
+    "sbc hl,de",
+	"ld hl,0",
+	"jrc +1",
+    "dec hl"
+    ],
+'UGE': [
+    "pop de",
+    "ex de,hl",
+	"xor a",
+    "sbc hl,de",
+	"ld hl,0",
+	"jrc +1",
+    "dec hl"
+    ],
+'JMPEQ': [
+    "pop de",
+    "xor a",
+    "sbc hl,de",
+    "jpz $ARG1"
+    ],
+'JMPNE': [
+    "pop de",
+    "xor a",
+    "sbc hl,de",
+    "jpnz $ARG1"
+    ],
+'JMPLT': [
+    "pop de",
+    "ex de,hl",
+    "xor a",
+    "sbc hl,de",
+    "jpm $ARG1"
+    ],
+'JMPGT': [
+    "pop de",
+    "xor a",
+    "sbc hl,de",
+    "jpm $ARG1"
+    ],
+'JMPLE': [
+    "pop de",
+    "xor a",
+    "sbc hl,de",
+    "jpp $ARG1"
+    ],
+'JMPGE': [
+    "pop de",
+    "ex de,hl",
+	"xor a",
+    "sbc hl,de",
+    "jpp $ARG1"
+    ],
+'JMPULT': [
+    "pop de",
+    "ex de,hl",
+	"xor a",
+    "sbc hl,de",
+    "jpc $ARG1"
+    ],
+'JMPUGT': [
+    "pop de",
+    "xor a",
+	"sbc hl,de",
+    "jpc $ARG1"
+    ],
+'JMPULE': [
+    "pop de",
+    "xor a",
+    "sbc hl,de",
+    "jpnc $ARG1"
+    ],
+'JMPUGE': [
+    "pop de",
+    "ex de,hl",
+	"xor a",
+    "sbc hl,de",
+    "jpnc $ARG1"
+    ],
+'SKIP': ["jp $ARG1"]
+}
 
 class FWCALL:
     TXT_CLEAR_WINDOW    = "&BB6C"
@@ -35,11 +397,10 @@ class Z80Backend:
         self.icode = []
         self.libcode = []   # reusable and utility asm subroutines
         self.code = []      # program code
-        self.data = []      # data/constants declaration area
-        
+        self.data = []      # data/constants declaration area    
 
     def save_output(self):
-        with open(self.outputfile, 'w') as ofd:
+        with open(self.outputfile, 'w  ') as ofd:
             ofd.writelines(self.libcode)
             ofd.writelines(self.code)
             ofd.writelines(self.data)
@@ -49,12 +410,49 @@ class Z80Backend:
     def emitlibcode(self, code):
         self.libcode.append(code + '\n')
 
-    def emitcode(self, code):
-        self.code.append(code + '\n')
+    def emitcode(self, inst, arg, prefix):
+        code = SM2Z80[inst]
+        for line in code:
+            if arg != None: line = line.replace('$ARG1', arg)
+            self.code.append(prefix + line + '\n')
 
     def emitdata(self, code):
         self.data.append(code + '\n')
 
+    def generatecode(self, orgaddr):
+        self.code.append('org &%04X\n' % orgaddr)
+        for inst, arg, prefix in self.icode:
+            self.emitcode(inst, arg, prefix)
+
+        for symname in self.symbols.getsymbols():
+            symbol = self.symbols.get(symname)
+            if symbol.valtype == BASTypes.INT:
+                self.emitdata(f'{symbol.symbol}: db &00,&00')
+            elif symbol.valtype == BASTypes.REAL:
+                self.emitdata(f'{symbol.symbol}: db &00,&00,&00,&00')
+            elif symbol.valtype == BASTypes.STR:
+                self.emitdata(f'{symbol.symbol}: defs "",&00')
+            else:
+                # None, this symbol was a label
+                pass
+
+    def save_output(self, outputfile, icode, symbols, startaddr = 0x4000):
+        """
+        outputfile: output file where assembly code will be written
+        icode: Intermediate code generated by the Emitter
+        symbols: SymbolTable generated by the parser
+        startaddr: Starting memory position for the code generated
+        """
+        self.symbols = symbols
+        self.icode = icode
+        self.generatecode(startaddr)
+        with open(outputfile, "w") as fd:
+            fd.writelines(self.code)
+            fd.writelines(self.libcode)
+            fd.writelines(self.data)
+
+"""
+AAA Future reference
     def emit_rtcall(self, fun, args = []):
         fun_cb = getattr(self, "rtcall_" + fun, None)
         if fun_cb == None:
@@ -74,26 +472,5 @@ class Z80Backend:
         self.emitcode("\tcall    " + FWCALL.SCR_SET_MODE  + " ;SCR_SET_MODE")
         self.emitcode("\tpop     hl")
         self.emitcode("\tpop     af")
-
-    def generatecode(self, orgaddr):
-        self.emitcode("org     &%04X" % orgaddr)
-        # TODO: temporal 'hack' to see intermediate code
-        for ins in self.icode:
-            self.emitcode(ins)
-
-    def save_output(self, outputfile, icode, symbols, startaddr = 0x4000):
-        """
-        outputfile: output file where assembly code will be written
-        icode: Intermediate code generated by the Emitter
-        symbols: SymbolTable generated by the parser
-        startaddr: Starting memory position for the code generated
-        """
-        self.symbols = symbols
-        self.icode = icode
-        self.generatecode(startaddr)
-        with open(outputfile, "w") as fd:
-            fd.writelines(self.code)
-            fd.writelines(self.libcode)
-            fd.writelines(self.data)
-
+"""
             
