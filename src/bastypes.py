@@ -281,6 +281,7 @@ class Token:
 
     @staticmethod
     def get_keyword(tktext):
+        if tktext[-1] == '$': tktext = tktext[:-1] + 'S'
         for tktype in TokenType:
             # Relies on all keyword enum values being 1XX.
             if tktype.name == tktext and tktype.value > TokenType.ABS.value and tktype.value < TokenType.TK_NUM_OPS.value:

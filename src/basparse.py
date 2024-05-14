@@ -57,7 +57,7 @@ class BASParser:
         filename = os.path.basename(filename)
         if self.verbose:
             print("error from", inspect.stack()[1].function + "()")
-        print("error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
+        print("Error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
         while not self.match_current(TokenType.NEWLINE):
             self.next_token()
 

@@ -16,6 +16,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import sys
+import os
 from bastypes import TokenType, Token
     
 class BASLexer:
@@ -63,8 +64,9 @@ class BASLexer:
 
     def abort(self, message, extrainfo = ""):
         """Stops with an error message adding file name and original file number"""
-        file, linenum, _ = self.orgcode[self.cur_line]
-        print("Fatal error in %s:%d: %s -> %s %s" % (file, linenum, self.cur_line.strip(), message, extrainfo))
+        file, linenum, line = self.orgcode[self.cur_line]
+        file = os.path.basename(file)
+        print("Fatal error in %s:%d: %s -> %s %s" % (file, linenum, line.strip(), message, extrainfo))
         sys.exit(1)
 
     def _get_operator(self):
@@ -144,6 +146,9 @@ class BASLexer:
         """
         start_pos = self.cur_pos
         while self.peek().isalnum():
+            self.next_char()
+        if self.peek() in ['!', '%', '$']:
+            # Type symbols and end character for some functions
             self.next_char()
         return self.source[start_pos : self.cur_pos + 1].upper()
 

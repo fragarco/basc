@@ -49,7 +49,7 @@ class BASPreprocessor:
         if ":" in line.replace(relpath.group(0), ''):
             # colon outside of quotes
             raise BASPreprocessorError(
-                "lines with INCBAS keyword cannot include multiple commands symbol ':'",
+                "lines with INCBAS keyword cannot include other commands in the same line",
                 lines[iline][0],
                 lines[iline][1]
             )
@@ -62,7 +62,7 @@ class BASPreprocessor:
                 return lines[0:iline+1] + newlines + lines[iline+1:]
         except IOError:
             raise BASPreprocessorError(
-                "couldn't read included file %s" % relpath.group(0),
+                "cannot read included file %s" % relpath.group(0),
                 lines[iline][0],
                 lines[iline][1]
             )
