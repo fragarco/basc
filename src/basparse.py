@@ -41,14 +41,12 @@ class BASParser:
         self.peek_token = None
         self.symbols = SymbolTable()
         self.cur_expr = Expression()
+        self.expr_stack = []
 
-    def abort(self, srcline, message, extrainfo = ""):
-        self.errors = self.errors + 1
-        filename, linenum, line = self.lexer.get_srccode(srcline)
-        filename = os.path.basename(filename)
+    def abort(self, message):
         if self.verbose:
             print("abort signal from", inspect.stack()[1].function + "()")
-        print("Fatal error in %s:%d: %s -> %s %s" % (filename, linenum, line.strip(), message, extrainfo))
+        print(f"Fatal error: {message}")
         sys.exit(1)
     
     def error(self, srcline, message, extrainfo = ""):
@@ -100,6 +98,20 @@ class BASParser:
             entry = self.symbols.add(symbol, SymTypes.SYMVAR)
         return entry
 
+    def push_curexpr(self):
+        self.expr_stack.append(self.cur_expr)
+        self.cur_expr = Expression()
+
+    def pop_curexpr(self):
+        if len(self.expr_stack) > 0:
+            self.cur_expr = self.expr_stack[-1]
+            self.expr_stack = self.expr_stack[:-1]
+        else:
+            self.abort("internal error processing expressions")
+
+    def reset_curexpr(self):
+        self.cur_expr = Expression()
+
     def parse(self):
         self.lexer.reset()
         self.cur_token = self.lexer.get_token()
@@ -149,7 +161,7 @@ class BASParser:
 
     def statement(self):
         """  <statement> = ID ':' NEWLINE | ID '=' <expression> | <keyword>"""
-        self.cur_expr.reset()
+        self.reset_curexpr()
         if self.match_current(TokenType.IDENT):
             symbol = self.cur_token
             self.next_token()
@@ -187,15 +199,32 @@ class BASParser:
     def keyword_CLS(self):
         """ keyword_CLS := CLS [# <expression>]"""
         self.next_token()
+        args = []
+        line = self.cur_token.srcline
         if self.match_current(TokenType.CHANNEL):
             self.next_token()
+            self.push_curexpr()
             self.expression()
-   
+            if self.cur_expr.is_empty() or not self.cur_expr.is_int():
+                self.pop_curexpr()
+                self.error(line, ErrorCode.ARGUMENT)
+                return
+            self.pop_curexpr()
+            args = [self.cur_expr]
+        self.emitter.rtcall('CLS', args)
+
     def keyword_MODE(self):
         """ keyword_MODE := MODE <expression> """
+        line = self.cur_token.srcline
         self.next_token()
+        self.push_curexpr()
         self.expression()
-
+        if self.cur_expr.is_empty() or not self.cur_expr.is_int():
+            self.error(line, ErrorCode.ARGUMENT)
+        else:
+            arg = self.cur_expr
+            self.emitter.rtcall('MODE', [arg])      
+        self.pop_curexpr()
 
     # Expression rules
 

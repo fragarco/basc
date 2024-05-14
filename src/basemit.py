@@ -148,7 +148,10 @@ class SMEmitter:
             else:
                 self.operate(item)
     
-    def call(self, function_name, *args):
+    def call(self, fname, args = []):
+        pass
+
+    def rtcall(self, fname, args = []):
         pass
 
     def ret(self, value=None):

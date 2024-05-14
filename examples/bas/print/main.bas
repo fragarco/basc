@@ -2,23 +2,23 @@
 ' of PRINT and INKEY$
 
 CLS
-PRINT "Select Yes or No (Y/N)?"
+' PRINT "Select Yes or No (Y/N)?"
 
-mainloop:
-    a$=INKEY$
+'mainloop:
+'    a$=INKEY$
 
-    IF a$="" THEN mainloop
-    IF a$="y" OR a$="Y" THEN endyes
-    IF a$="N" OR a$="n" THEN endno
-    GOTO mainloop
+'    IF a$="" THEN mainloop
+'    IF a$="y" OR a$="Y" THEN endyes
+'    IF a$="N" OR a$="n" THEN endno
+'    GOTO mainloop
 
-endyes:
-    PRINT "You have selected YES"
-    END
+'endyes:
+'    PRINT "You have selected YES"
+'    END
 
-endno:
-    PRINT "You have selected NO"
-    END
+'endno:
+'    PRINT "You have selected NO"
+'    END
 
 ' original code
 ' 10 CLS

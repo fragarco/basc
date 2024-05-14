@@ -379,6 +379,18 @@ class Expression:
         self.expr = []
         self.type = BASTypes.INT
 
+    def is_empty(self):
+        return len(self.expr) == 0
+
+    def is_int(self):
+        return self.type.value == BASTypes.INT.value
+
+    def is_real(self):
+        return self.type.value == BASTypes.REAL.value
+
+    def is_str(self):
+        return self.type.value == BASTypes.STR.value
+
     def check_types(self, bastype):
         if bastype.value < BASTypes.STR.value and self.type.value < BASTypes.STR.value:
             # both are numeric types
