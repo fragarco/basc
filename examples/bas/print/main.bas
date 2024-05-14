@@ -1,7 +1,7 @@
 ' Simple example of jumping to labels and the use
 ' of PRINT and INKEY$
 
-CLS
+CLS "hola"
 ' PRINT "Select Yes or No (Y/N)?"
 
 'mainloop:
