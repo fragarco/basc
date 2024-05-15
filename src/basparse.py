@@ -42,6 +42,7 @@ class BASParser:
         self.symbols = SymbolTable()
         self.cur_expr = Expression()
         self.expr_stack = []
+        self.temp_vars = 0
 
     def abort(self, message):
         if self.verbose:
@@ -85,17 +86,29 @@ class BASParser:
                 None if self.cur_token == None else self.cur_token.text
             )
 
-    def symtab_addlabel(self, symbol):
-        if self.symbols.search(symbol.text):
-            self.error(symbol.srcline, ErrorCode.LEXISTS)
+    def symtab_addlabel(self, symname, srcline):
+        if self.symbols.search(symname):
+            self.error(srcline, ErrorCode.LEXISTS)
         else:
-            self.symbols.add(symbol, SymTypes.SYMLAB)
+            return self.symbols.add(symname, SymTypes.SYMLAB)
 
-    def symtab_addident(self, symbol):
+    def symtab_addident(self, symname, srcline, expr):
         # check if symbol exists (nothing to do)
-        entry = self.symbols.search(symbol)
+        entry = self.symbols.search(symname)
         if entry == None:
-            entry = self.symbols.add(symbol, SymTypes.SYMVAR)
+            entry = self.symbols.add(symname, SymTypes.SYMVAR)
+        if entry.check_types(expr.type):
+            entry.set_value(expr)
+        else:
+            self.error(srcline, ErrorCode.TYPE)
+            return None
+        return entry
+
+    def symtab_newtemp(self, srcline, expr):
+        sname = f"TMP_VAR{self.temp_vars:03d}"
+        entry = self.symtab_addident(sname, srcline, expr)
+        entry.temporal = True
+        self.temp_vars = self.temp_vars + 1
         return entry
 
     def push_curexpr(self):
@@ -116,6 +129,8 @@ class BASParser:
         self.lexer.reset()
         self.cur_token = self.lexer.get_token()
         self.peek_token = self.lexer.get_token()
+        self.temp_vars = 0
+        self.errors = 0
         self.lines()
         if self.errors:
             print(self.errors, "error(s) in total")
@@ -150,6 +165,8 @@ class BASParser:
                 self.statements()
                 if self.match_current(TokenType.NEWLINE):
                     self.next_token()
+                else:
+                    self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
         else:
             self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
@@ -166,21 +183,14 @@ class BASParser:
             symbol = self.cur_token
             self.next_token()
             if self.match_current(TokenType.COLON) and self.match_next(TokenType.NEWLINE):
-                self.symtab_addlabel(symbol)
+                self.symtab_addlabel(symbol.text, symbol.srcline)
                 self.next_token()
             elif self.match_current(TokenType.EQ):
                 self.next_token()
                 self.expression()
-                entry = self.symbols.search(symbol.text)
-                if entry == None:
-                    entry = self.symtab_addident(symbol.text)
-                else:
-                    if not self.cur_expr.check_types(entry.valtype):
-                        self.error(symbol.srcline, ErrorCode.TYPE)
-                        return
-                entry.set_value(self.cur_expr)
-                self.emitter.expression(self.cur_expr)
-                self.emitter.store(symbol.text)
+                if self.symtab_addident(symbol.text, symbol.srcline, self.cur_expr) != None:
+                    self.emitter.expression(self.cur_expr)
+                    self.emitter.store(symbol.text)
             else:
                 self.error(symbol.srcline, ErrorCode.SYNTAX)
         elif self.cur_token.is_keyword():
@@ -190,41 +200,81 @@ class BASParser:
 
     def keyword(self):
         """ <keyword> := COMMAND | FUNCTION """
-        keyword_rule = getattr(self, "keyword_" + self.cur_token.text, None)
+        keyword_rule = getattr(self, "command_" + self.cur_token.text, None)
         if keyword_rule == None:
-            self.error(self.cur_token.srcline, ErrorCode.NOKEYW, ": " + self.cur_token.text, )
+            keyword_rule = getattr(self, "function_" + self.cur_token.text, None)
+        if keyword_rule == None:
+            self.error(self.cur_token.srcline, ErrorCode.NOKEYW, ": " + self.cur_token.text)
         else:
             keyword_rule()
 
-    def keyword_CLS(self):
-        """ keyword_CLS := CLS [# <expression>]"""
+    def command_CLS(self):
+        """ <command_CLS> := CLS [<arg_channel>] """
         self.next_token()
         args = []
+        if self.match_current(TokenType.CHANNEL):
+            self.push_curexpr()
+            self.arg_channel()
+            args = [self.cur_expr]
+            self.pop_curexpr()
+        self.emitter.rtcall('CLS', args)
+
+
+    def command_MODE(self):
+        """ command_MODE := MODE <arg_int> """
+        self.next_token()
+        self.push_curexpr()
+        self.arg_int()
+        self.emitter.rtcall('MODE', [self.cur_expr])      
+        self.pop_curexpr()
+
+    def command_PRINT(self):
+        """ command_PRINT := PRINT <arg_str> """
+        self.next_token()
+        self.push_curexpr()
+        self.arg_str()
+        self.emitter.rtcall('PRINT', [self.cur_expr])      
+        self.pop_curexpr()
+
+    # Argument rules
+
+    def arg_channel(self):
+        """<arg_channel> = #<expression>.t == INT"""
         line = self.cur_token.srcline
         if self.match_current(TokenType.CHANNEL):
             self.next_token()
-            self.push_curexpr()
             self.expression()
-            if self.cur_expr.is_empty() or not self.cur_expr.is_int():
-                self.pop_curexpr()
-                self.error(line, ErrorCode.ARGUMENT)
-                return
-            self.pop_curexpr()
-            args = [self.cur_expr]
-        self.emitter.rtcall('CLS', args)
-
-    def keyword_MODE(self):
-        """ keyword_MODE := MODE <expression> """
-        line = self.cur_token.srcline
-        self.next_token()
-        self.push_curexpr()
-        self.expression()
-        if self.cur_expr.is_empty() or not self.cur_expr.is_int():
-            self.error(line, ErrorCode.ARGUMENT)
+            if not self.cur_expr.is_int():
+                self.error(line, ErrorCode.TYPE)
         else:
-            arg = self.cur_expr
-            self.emitter.rtcall('MODE', [arg])      
-        self.pop_curexpr()
+            self.error(line, ErrorCode.SYNTAX)
+
+    def arg_int(self):
+        """<arg_int> = #<expression>.t == INT"""
+        line = self.cur_token.srcline
+        self.expression()
+        if self.cur_expr.is_empty():
+            self.error(line, ErrorCode.SYNTAX)
+        if not self.cur_expr.is_int():
+            self.error(line, ErrorCode.TYPE)
+
+    def arg_real(self):
+        """<arg_real> = #<expression>.t == REAL"""
+        line = self.cur_token.srcline
+        self.expression()
+        if self.cur_expr.is_empty():
+            self.error(line, ErrorCode.SYNTAX)
+        if not self.cur_expr.is_real():
+            self.error(line, ErrorCode.TYPE)
+
+    def arg_str(self):
+        """<arg_str> = #<expression>.t == STR"""
+        line = self.cur_token.srcline
+        self.expression()
+        if self.cur_expr.is_empty():
+            self.error(line, ErrorCode.SYNTAX)
+        if not self.cur_expr.is_str():
+            self.error(line, ErrorCode.TYPE)
 
     # Expression rules
 
@@ -356,10 +406,18 @@ class BASParser:
             else:
                 self.error(self.cur_token.srcline, ErrorCode.TYPE)
         elif self.match_current(TokenType.STRING):
-            if self.cur_expr.pushval(self.cur_token.text, BASTypes.STR):
+            if self.cur_expr.is_str() or self.cur_expr.is_none():
+                # create a constant variable to assign the string literal and 
+                # add that variable to the expression
+                strexpr = Expression()
+                strexpr.pushval(self.cur_token.text, BASTypes.STR)
+                sym = self.symtab_newtemp(self.cur_token.srcline, strexpr)
+                self.cur_expr.pushval(sym.symbol, BASTypes.STR)
                 self.next_token()
             else:
                 self.error(self.cur_token.srcline, ErrorCode.TYPE)
         else:
-            #TODO functions
+            # TODO functions
+            # create a temporal variable to hold the function return value
+            # emit that and add the temporal variable to the expression
             self.error(self.cur_token.srcline, "functions in expressions are not supported yet")

@@ -1,10 +1,10 @@
 ' Simple example of jumping to labels and the use
 ' of PRINT and INKEY$
 
-CLS "hola"
-' PRINT "Select Yes or No (Y/N)?"
+CLS
+PRINT "Select Yes or No (Y/N)?"
 
-'mainloop:
+mainloop:
 '    a$=INKEY$
 
 '    IF a$="" THEN mainloop
@@ -12,11 +12,11 @@ CLS "hola"
 '    IF a$="N" OR a$="n" THEN endno
 '    GOTO mainloop
 
-'endyes:
+endyes:
 '    PRINT "You have selected YES"
 '    END
 
-'endno:
+endno:
 '    PRINT "You have selected NO"
 '    END
 

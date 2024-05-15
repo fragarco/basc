@@ -304,7 +304,8 @@ class BASTypes(enum.Enum):
     INT     = 0
     REAL    = 1
     STR     = 2
-    NONE    = 3
+    VOID    = 3
+    NONE    = 4
 
 class SymTypes(enum.Enum):
     SYMVAR   = 0
@@ -321,7 +322,7 @@ class Symbol:
         self.symtype = stype
         self.value = None
         self.valtype = BASTypes.NONE
-        self.extrainfo = None
+        self.temporal = False
         self.puts = 0
         self.gets = 0
     
@@ -330,9 +331,15 @@ class Symbol:
         self.valtype = expr.type
         self.inc_writes()
     
-    def is_var(self):
-        return self.type == SymTypes.SYMVAR
+    def is_ident(self):
+        return self.symtype == SymTypes.SYMVAR
     
+    def is_label(self):
+        return self.symtype == SymTypes.SYMLAB
+    
+    def is_constant(self):
+        return self.puts == 1 and self.is_ident() and len(self.value) == 1
+
     def inc_reads(self):
         """ To control the number of times the symbol value is used """
         self.gets = self.gets + 1
@@ -340,6 +347,9 @@ class Symbol:
     def inc_writes(self):
         """ To control the number of times the symbol value is changed """
         self.puts = self.puts + 1
+
+    def check_types(self, bastype):
+        return self.valtype == bastype or self.valtype == BASTypes.NONE
 
     def print(self):
         print(self.symbol + ' -', self.symtype, ':', self.valtype, self.value)
@@ -377,10 +387,16 @@ class Expression:
 
     def reset(self):
         self.expr = []
-        self.type = BASTypes.INT
+        self.type = BASTypes.NONE
 
     def is_empty(self):
         return len(self.expr) == 0
+
+    def is_complex(self):
+        return len(self.expr) > 1
+
+    def is_simple(self):
+        return len(self.expr) == 1
 
     def is_int(self):
         return self.type.value == BASTypes.INT.value
@@ -391,14 +407,14 @@ class Expression:
     def is_str(self):
         return self.type.value == BASTypes.STR.value
 
+    def is_void(self):
+        return self.type.value == BASTypes.VOID.value
+    
+    def is_none(self):
+        return self.type.value == BASTypes.NONE.value
+    
     def check_types(self, bastype):
-        if bastype.value < BASTypes.STR.value and self.type.value < BASTypes.STR.value:
-            # both are numeric types
-            return True
-        elif bastype == BASTypes.STR and self.type == BASTypes.STR:
-            # both are strings
-            return True
-        return False
+        return self.type == bastype or self.type == BASTypes.NONE
 
     def check_op(self, op):
         if self.type == BASTypes.STR:
@@ -410,10 +426,10 @@ class Expression:
 
     def pushval(self, symbol, bastype):
         self.expr.append(symbol)
-        if self.check_types(bastype):
-            self.type = bastype
-            return True
-        return False
+        if not self.check_types(bastype):
+            return False
+        self.type = bastype
+        return True
     
     def pushop(self, symbol):
         self.expr.append(symbol)

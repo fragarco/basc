@@ -427,11 +427,14 @@ class Z80Backend:
         for symname in self.symbols.getsymbols():
             symbol = self.symbols.get(symname)
             if symbol.valtype == BASTypes.INT:
-                self.emitdata(f'{symbol.symbol}: db &00,&00')
+                self.emitdata(f'{symbol.symbol}: dw 0')
             elif symbol.valtype == BASTypes.REAL:
-                self.emitdata(f'{symbol.symbol}: db &00,&00,&00,&00')
+                self.emitdata(f'{symbol.symbol}: dw 0,0')
             elif symbol.valtype == BASTypes.STR:
-                self.emitdata(f'{symbol.symbol}: defs "",&00')
+                if symbol.is_constant():
+                    self.emitdata(f'{symbol.symbol}: db "{symbol.value[0]}",&00')
+                else:    
+                    self.emitdata(f'{symbol.symbol}: defs 255')
             else:
                 # None, this symbol was a label
                 pass

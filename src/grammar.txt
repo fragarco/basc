@@ -302,6 +302,7 @@ LOCOMOTIVE BASIC
 <statements>  ::= <statement> [':' <statements>]
 <statement>   ::= ID ':' NEWLINE | ID '=' <expression> | <keyword>
 
+<keyword>     ::= RESERVED_WORD [{(arg_channel | arg_int | arg_real | arg_str)}]
 <expression>  ::= <or_exp> [XOR <expression>]
 <or_exp>      ::= <and_exp> [OR <or_exp>]
 <and_exp>     ::= <not_exp> [AND <and_exp>]

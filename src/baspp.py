@@ -82,7 +82,7 @@ class BASPreprocessor:
                         # insert content from another BAS file
                         srclines = self._insert_file(srcline, line, srclines)
                         srcline = srcline + 1
-                    else:
+                    elif line != "":
                         line = str(autonum) + ' ' + line
                         outlines.append((filename, fileline, line + '\n'))
                         autonum = autonum + increment
