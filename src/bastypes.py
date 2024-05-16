@@ -437,3 +437,21 @@ class Expression:
 
     def __str__(self):
         return str(self.expr) + " of type " + str(self.type)
+    
+    @staticmethod
+    def int(literal):
+        expr = Expression()
+        expr.pushval(literal, BASTypes.INT)
+        return expr
+    
+    @staticmethod
+    def str(literal):
+        expr = Expression()
+        expr.pushval(literal, BASTypes.STR)
+        return expr
+    
+    @staticmethod
+    def real(literal):
+        expr = Expression()
+        expr.pushval(literal, BASTypes.REAL)
+        return expr

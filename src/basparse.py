@@ -80,8 +80,7 @@ class BASParser:
         self.cur_token = self.peek_token
         self.peek_token = self.lexer.get_token()
         if self.verbose:
-            print("call from", inspect.stack()[1].function + "()",
-                "moving current token to ->",
+            print("Token is",
                 None if self.cur_token == None else self.cur_token.type,
                 None if self.cur_token == None else self.cur_token.text
             )
@@ -105,7 +104,7 @@ class BASParser:
         return entry
 
     def symtab_newtemp(self, srcline, expr):
-        sname = f"TMP_VAR{self.temp_vars:03d}"
+        sname = f"tmpident{self.temp_vars:03d}"
         entry = self.symtab_addident(sname, srcline, expr)
         entry.temporal = True
         self.temp_vars = self.temp_vars + 1
@@ -211,7 +210,7 @@ class BASParser:
     def command_CLS(self):
         """ <command_CLS> := CLS [<arg_channel>] """
         self.next_token()
-        args = []
+        args = [Expression.int('0')]
         if self.match_current(TokenType.CHANNEL):
             self.push_curexpr()
             self.arg_channel()

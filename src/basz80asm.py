@@ -16,6 +16,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
+import sys
 import basz80lib
 from bastypes import BASTypes
 
@@ -399,6 +400,10 @@ class Z80Backend:
         self.code = []      # program code
         self.data = []      # data/constants declaration area    
 
+    def abort(self, message):
+        print("Fatal error:", message)
+        sys.exit(1)
+
     def save_output(self):
         with open(self.outputfile, 'w  ') as ofd:
             ofd.writelines(self.libcode)
@@ -411,10 +416,16 @@ class Z80Backend:
         self.libcode.append(code + '\n')
 
     def emitcode(self, inst, arg, prefix):
-        code = SM2Z80[inst]
-        for line in code:
-            if arg != None: line = line.replace('$ARG1', arg)
-            self.code.append(prefix + line + '\n')
+        if inst == "LIBCALL":
+            # BASIC original function
+            self.emit_rtcall(arg)
+        elif inst in SM2Z80:
+            code = SM2Z80[inst]
+            for line in code:
+                if arg != None: line = line.replace('$ARG1', arg)
+                self.code.append(prefix + line + '\n')
+        else:
+            self.abort(f"intermediate op-code {inst} is unknown")
 
     def emitdata(self, code):
         self.data.append(code + '\n')
@@ -454,26 +465,30 @@ class Z80Backend:
             fd.writelines(self.libcode)
             fd.writelines(self.data)
 
-"""
-AAA Future reference
-    def emit_rtcall(self, fun, args = []):
+    # BASIC commands and functions
+
+    def emit_rtcall(self, fun):
         fun_cb = getattr(self, "rtcall_" + fun, None)
         if fun_cb == None:
             print("Emitter error:", fun, "call is not implemented yet")
         else:
-            fun_cb(args)
+            fun_cb()
 
-    def rtcall_CLS(self, args):
-        self.emitcode("\tpush    hl")
-        self.emitcode("\tcall    " + FWCALL.TXT_CLEAR_WINDOW + " ;TXT_CLEAR_WINDOW")
-        self.emitcode("\tpop     hl")
+    def _addcode(self, line):
+        self.code.append(line + '\n')
 
-    def rtcall_MODE(self, expr):
-        self.emitcode("\tpush    af")
-        self.emitcode("\tld      a,%s" % expr.expr[0])
-        self.emitcode("\tpush    hl")
-        self.emitcode("\tcall    " + FWCALL.SCR_SET_MODE  + " ;SCR_SET_MODE")
-        self.emitcode("\tpop     hl")
-        self.emitcode("\tpop     af")
-"""
-            
+    def rtcall_CLS(self):
+        self._addcode("\tpush    hl")
+        self._addcode("\tcall    " + FWCALL.TXT_CLEAR_WINDOW + " ;TXT_CLEAR_WINDOW")
+        self._addcode("\tpop     hl")
+
+    def rtcall_MODE(self):
+        self._addcode("\tpush    af")
+        self._addcode("\tld      a,l")
+        self._addcode("\tpush    hl")
+        self._addcode("\tcall    " + FWCALL.SCR_SET_MODE  + " ;SCR_SET_MODE")
+        self._addcode("\tpop     hl")
+        self._addcode("\tpop     af")
+
+    def rtcall_PRINT(self):
+        pass

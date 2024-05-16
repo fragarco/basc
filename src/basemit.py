@@ -47,6 +47,7 @@ class SMI:
     DREFB = 'DREFB'
     CALL = 'CALL'
     CALR = 'CALR'
+    LIBCALL = 'LIBCALL'
     JUMP = 'JUMP'
     RJUMP = 'RJUMP'
     JMPFALSE = 'JMPFALSE'
@@ -148,11 +149,11 @@ class SMEmitter:
             else:
                 self.operate(item)
     
-    def call(self, fname, args = []):
-        pass
-
     def rtcall(self, fname, args = []):
-        pass
+        if len(args):
+            self.expression(args[0])
+            for i in range(1,len(args)):
+                self._emit(SMI.PUSH)    # previous arg value
+                self.expression(args[i])
+        self._emit(SMI.LIBCALL, fname)
 
-    def ret(self, value=None):
-        pass

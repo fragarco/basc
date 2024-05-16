@@ -48,6 +48,11 @@ def main():
     parser = basparse.BASParser(lexer, emitter, args.verbose)
     parser.parse()
     
+    if args.verbose:
+        # InteRmediate Code
+        with open(args.out + '.irc', 'w') as fo:
+            fo.writelines([f"{op} ({param}) -- {pref}\n" for op, param, pref in emitter.code])
+
     asmout = args.out + '.asm'
     backend = basz80asm.Z80Backend()
     backend.save_output(asmout, emitter.code, parser.symbols)
