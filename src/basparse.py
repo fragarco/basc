@@ -65,7 +65,7 @@ class BASParser:
         return line 
     
     def get_linelabel(self, num):
-        return f'__LABEL_LINE_{num}'
+        return f'__label_line_{num}'
 
     def match_current(self, tktype):
         """Return true if the current token matches."""
@@ -79,11 +79,6 @@ class BASParser:
         """Advances the current token."""
         self.cur_token = self.peek_token
         self.peek_token = self.lexer.get_token()
-        if self.verbose:
-            print("Token is",
-                None if self.cur_token == None else self.cur_token.type,
-                None if self.cur_token == None else self.cur_token.text
-            )
 
     def symtab_addlabel(self, symname, srcline):
         if self.symbols.search(symname):
@@ -183,6 +178,7 @@ class BASParser:
             self.next_token()
             if self.match_current(TokenType.COLON) and self.match_next(TokenType.NEWLINE):
                 self.symtab_addlabel(symbol.text, symbol.srcline)
+                self.emitter.label(symbol.text)
                 self.next_token()
             elif self.match_current(TokenType.EQ):
                 self.next_token()

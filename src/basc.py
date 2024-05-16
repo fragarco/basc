@@ -20,7 +20,7 @@ import baspp
 import baslex
 import basparse
 import basemit
-import basz80asm
+import basz80
 import basm
 
 def process_args():
@@ -54,7 +54,7 @@ def main():
             fo.writelines([f"{op} ({param}) -- {pref}\n" for op, param, pref in emitter.code])
 
     asmout = args.out + '.asm'
-    backend = basz80asm.Z80Backend()
+    backend = basz80.Z80Backend()
     backend.save_output(asmout, emitter.code, parser.symbols)
     basm.assemble(asmout)
 
