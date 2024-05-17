@@ -302,7 +302,7 @@ LOCOMOTIVE BASIC
 <statements>  ::= <statement> [':' <statements>]
 <statement>   ::= ID ':' NEWLINE | ID '=' <expression> | <keyword>
 
-<keyword>     ::= RESERVED_WORD [{(arg_channel | arg_int | arg_real | arg_str)}]
+<keyword>     ::= RESERVED_WORD [{(arg_stream | arg_int | arg_real | arg_str)}]
 <expression>  ::= <or_exp> [XOR <expression>]
 <or_exp>      ::= <and_exp> [OR <or_exp>]
 <and_exp>     ::= <not_exp> [AND <and_exp>]
@@ -340,7 +340,7 @@ BASIC notation
 []          Optional
 & or &H     Prefixes for a hexadecimal number
 &X          Prefixes for a binary number
-#           Prefixes for an inputs/outputs chanel (stream)
+#           Prefixes for an input/output stream
 
 DATA TYPES
 
@@ -350,7 +350,7 @@ DATA TYPES
 <numerical expression>  Is an expression which leads to a numerical value.All that is not
                         <alphanumeric chain>. Can be REAL numbers.
 
-<chanel number>         <numerical expression> to indicate a screen window, a printer, a
+<stream number>         <numerical expression> to indicate a screen window, a printer, a
                         cassette or a diskette to which the text must be forwarded.
 
 <list of element>       Describes a list of elements separated by commas.
@@ -387,9 +387,9 @@ CLEAR INPUT -- COMMAND
 CLG [<inks>] -- COMMAND
 CLOSEIN -- COMMAND
 CLOSEOUT -- COMMAND
-CLS [# <channel number>] -- COMMAND
+CLS [# <stream number>] -- COMMAND
 CONT -- COMMAND
-COPYCHR$ (# <channel number>) -- FUNCTION
+COPYCHR$ (# <stream number>) -- FUNCTION
 COS (<numerical expression>) -- FUNCTION
 CREAL  (<numerical expression>) -- FUNCTION
 CURSOR [<system indicator>)][ , <user indicator>] --  COMMAND
@@ -438,7 +438,7 @@ INK <ink>,<color number> [,<color number>] -- COMMAND
 INKEY (<whole number>) -- FUNCTION
 INKEY$ -- FUNCTION
 INP(<port number>) -- FUNCTION
-INPUT [#<channel number>,][;][<chain> <separator>] -- COMMAND
+INPUT [#<stream number>,][;][<chain> <separator>] -- COMMAND
 INSTR ( [<starting position>,]<chain containing>,<chain contained> ) -- FUNCTION
 INT (<numerical expression>) -- FUNCTION
 JOY (<whole number>) -- FUNCTION
@@ -447,10 +447,10 @@ KEY DEF <key number>,<repetition>[,<normal>[,<with shift>[,with control]]] -- CO
 LEFT$(<alphanumeric chain>,<necessary length>) -- FUNCTION
 LEN (<alphanumeric chain>) -- FUNCTION
 LET <variable>=<expression> -- COMMAND
-LINE INPUT [#<channel number>,][;][<chain> <separator>] <variable alphanumeric> -- COMMAND
-LIST [<unit of lines>][, #<channel number>] -- COMMAND
+LINE INPUT [#<stream number>,][;][<chain> <separator>] <variable alphanumeric> -- COMMAND
+LIST [<unit of lines>][, #<stream number>] -- COMMAND
 LOAD <filename>[,<adress>] -- COMMAND
-LOCATE [#<channel number>,]<coordinate x>,<coordinate y> -- COMMAND
+LOCATE [#<stream number>,]<coordinate x>,<coordinate y> -- COMMAND
 LOG (<numerical expression>) -- FUNCTION
 LOG10 (<numerical expression>) -- FUNCTION
 LOWER$ (<alphanumeric chain>) -- FUNCTION
@@ -476,29 +476,29 @@ ON BREAK STOP -- COMMAND
 ON ERROR GOTO <line number> -- COMMAND
 ON <selector> GOSUB <list of: <line number> -- COMMAND
 ON <selector> GOTO <list of: <line number> --  COMMAND
-ON SQ (<channel number>) GOSUB <line number> -- COMMAND
+ON SQ (<stream number>) GOSUB <line number> -- COMMAND
 OPENIN <filename> -- COMMAND
 OPENOUT <filename> -- COMMAND
 <argument> OR <argument> -- OPERATOR
 ORIGIN <x>,<y>[,<left>,<right>,<top>,<bottom>] -- COMMAND
 OUT <port number>,<whole number> -- COMMAND
-PAPER[#<channel number>,]<ink> -- COMMAND
+PAPER[#<stream number>,]<ink> -- COMMAND
 PEEK (<adress>) -- FUNCTION
-PEN [#<channel number>,][<ink>][,<paper mode>] -- COMMAND
+PEN [#<stream number>,][<ink>][,<paper mode>] -- COMMAND
 PI -- FUNCTION
 PLOT <coordinate x>,<coordinate y>[,[<ink>][,<ink mode>]] -- COMMAND
 PLOTR <interval x>,<interval y>[,[<ink>][,<ink mode>]] -- COMMAND
 POKE <adress>,<whole number> -- COMMAND
-POS (#<channel number>) -- FUNCTION
-PRINT [#<channel number>,][<list of: <article to print>] -- COMMAND
+POS (#<stream number>) -- FUNCTION
+PRINT [#<stream number>,][<list of: <article to print>] -- COMMAND
     PRINT SPC
     PRINT TAB
-PRINT [#<channel number>,][<list of: <article to print>][;]
+PRINT [#<stream number>,][<list of: <article to print>][;]
             [SPC(<whole number>)][<list of: <article to print>]
-PRINT [#<channel number>,][<list of: <article to print>][;]
+PRINT [#<stream number>,][<list of: <article to print>][;]
             [TAB(<whole number>)][<list of: <article to print>]
 
-PRINT [#<channel number>][<list of:<article to print>][;]
+PRINT [#<stream number>][<list of:<article to print>][;]
             [USING<format model>][<separator> <expression>]
 RAD -- COMMAND
 RANDOMIZE [<numerical expression>] -- COMMAND
@@ -532,8 +532,8 @@ STR$ (<numerical expression>) -- FUNCTION
 STRING$ (<lenght>,<character>) -- FUNCTION
 SYMBOL <character number>,<list of:<line> -- COMMAND
 SYMBOL AFTER <whole number> -- COMMAND
-TAG [#(<channel number>)] -- COMMAND
-TAGOFF [#(<channel number>)] -- COMMAND
+TAG [#(<stream number>)] -- COMMAND
+TAGOFF [#(<stream number>)] -- COMMAND
 TAN (<numerical expression>) -- FUNCTION
 TEST (<coordinate x>,<coordinate y>) -- FUNCTION
 TESTR (<interval x>,<interval y>) -- FUNCTION
@@ -543,14 +543,14 @@ TRON -- COMMAND
 UNT (<adress>) -- COMMAND
 UPPER$ (<alphanumeric chain>) -- FUNCTION
 VAL (<character string>) -- FUNCTION
-VPOS ( # <channel number>) -- FUNCTION
+VPOS ( # <stream number>) -- FUNCTION
 WAIT <I/O port number>,<mask>[,<inversion>] -- COMMAND
 WEND -- COMMAND
 WHILE <logical expression> -- COMMAND
 WIDTH <whole number> -- COMMAND
-WINDOW [ # <channel number>,]<left>,<right>,<high>,<low> -- COMMAND
-WINDOW SWAP <channel number>,<channel number> -- COMMAND
-WRITE [ # <channel number>,][<data to write>] -- COMMAND
+WINDOW [ # <stream number>,]<left>,<right>,<high>,<low> -- COMMAND
+WINDOW SWAP <stream number>,<stream number> -- COMMAND
+WRITE [ # <stream number>,][<data to write>] -- COMMAND
 <argument> XOR <argument> -- OPERATOR
 XPOS -- FUNCTION
 YPOS -- FUNCTION

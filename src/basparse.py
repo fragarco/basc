@@ -214,6 +214,22 @@ class BASParser:
             self.pop_curexpr()
         self.emitter.rtcall('CLS', args)
 
+    def command_GOTO(self):
+        """ <command_GOTO> := NUMBER | LABEL"""
+        # if the label doesn't exit, the assembler will fail
+        # this allow us to jump to a forward label/line
+        self.next_token()
+        args = []
+        if self.match_current(TokenType.INTEGER):
+            # jump to a line number
+            label = self.get_linelabel(self.cur_token.text)
+            self.emitter.goto(label)
+            self.next_token()
+        elif self.match_current(TokenType.IDENT):
+            self.emitter.goto(self.cur_token.text)
+            self.next_token()
+        else:
+            self.error(line, ErrorCode.SYNTAX)
 
     def command_MODE(self):
         """ command_MODE := MODE <arg_int> """

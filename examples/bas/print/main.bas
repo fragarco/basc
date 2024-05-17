@@ -10,7 +10,7 @@ mainloop:
 '    IF a$="" THEN mainloop
 '    IF a$="y" OR a$="Y" THEN endyes
 '    IF a$="N" OR a$="n" THEN endno
-'    GOTO mainloop
+GOTO mainloop
 
 endyes:
 '    PRINT "You have selected YES"
