@@ -70,7 +70,7 @@ class Z80Backend:
         for inst, arg, prefix in self.icode:
             self.emitcode(inst, arg, prefix)
         
-        self.code.append("endloop: goto endloop\n") # AAA TEMPORAL
+        self.code.append("endloop: jp endloop\n") # AAA TEMPORAL
         
         for symname in self.symbols.getsymbols():
             symbol = self.symbols.get(symname)
