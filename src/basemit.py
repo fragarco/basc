@@ -15,7 +15,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 import sys
-from bastypes import Expression
+from bastypes import Expression, BASTypes
 
 class SMI:
     """ Stack Machine Instructions """
@@ -120,6 +120,10 @@ class SMEmitter:
         self._emit(SMI.PUSH)
         self._emit(SMI.LDVAL, value)
 
+    def load_addr(self, value):
+        self._emit(SMI.PUSH)
+        self._emit(SMI.LDADDR, value)
+
     def load_symbol(self, symbol):
         self._emit(SMI.PUSH)
         self._emit(SMI.LDGLOB, symbol)
@@ -145,7 +149,10 @@ class SMEmitter:
             if item.isnumeric():
                 self.load_num(item)
             elif item.isalnum():
-                self.load_symbol(item)
+                if expression.is_str():
+                    self.load_addr(item)
+                else:
+                    self.load_symbol(item)
             else:
                 self.operate(item)
     
