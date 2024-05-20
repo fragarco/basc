@@ -88,6 +88,7 @@ class BASParser:
 
     def symtab_addident(self, symname, srcline, expr):
         # check if symbol exists (nothing to do)
+        symname = symname.replace('$', 's').lower()
         entry = self.symbols.search(symname)
         if entry == None:
             entry = self.symbols.add(symname, SymTypes.SYMVAR)
@@ -97,6 +98,10 @@ class BASParser:
             self.error(srcline, ErrorCode.TYPE)
             return None
         return entry
+
+    def symtab_search(self, symname):
+        symname = symname.replace('$', 's').lower()
+        return self.symbols.search(symname)
 
     def symtab_newtemp(self, srcline, expr):
         sname = f"tmpident{self.temp_vars:03d}"
@@ -183,9 +188,10 @@ class BASParser:
             elif self.match_current(TokenType.EQ):
                 self.next_token()
                 self.expression()
-                if self.symtab_addident(symbol.text, symbol.srcline, self.cur_expr) != None:
+                entry = self.symtab_addident(symbol.text, symbol.srcline, self.cur_expr)
+                if  entry != None:
                     self.emitter.expression(self.cur_expr)
-                    self.emitter.store(symbol.text)
+                    self.emitter.store(entry.symbol)
             else:
                 self.error(symbol.srcline, ErrorCode.SYNTAX)
         elif self.cur_token.is_keyword():
@@ -195,9 +201,10 @@ class BASParser:
 
     def keyword(self):
         """ <keyword> := COMMAND | FUNCTION """
-        keyword_rule = getattr(self, "command_" + self.cur_token.text, None)
+        fname = self.cur_token.text.replace('$', 'S').upper()
+        keyword_rule = getattr(self, "command_" + fname, None)
         if keyword_rule == None:
-            keyword_rule = getattr(self, "function_" + self.cur_token.text, None)
+            keyword_rule = getattr(self, "function_" + fname, None)
         if keyword_rule == None:
             self.error(self.cur_token.srcline, ErrorCode.NOKEYW, ": " + self.cur_token.text)
         else:
@@ -397,7 +404,7 @@ class BASParser:
     def factor(self):
         """<factor> ::= ID | INTEGER | REAL | STRING | <function>"""
         if self.match_current(TokenType.IDENT):
-            sym = self.symbols.search(self.cur_token.text)
+            sym = self.symtab_search(self.cur_token.text)
             if sym != None:
                 if self.cur_expr.pushval(self.cur_token.text, sym.valtype):
                     sym.inc_reads()
@@ -428,7 +435,9 @@ class BASParser:
             else:
                 self.error(self.cur_token.srcline, ErrorCode.TYPE)
         else:
-            # TODO functions
-            # create a temporal variable to hold the function return value
-            # emit that and add the temporal variable to the expression
-            self.error(self.cur_token.srcline, "functions in expressions are not supported yet")
+            fname = self.cur_token.text.replace('$', 'S').upper()
+            function_rule = getattr(self, "function_" + fname, None)
+            if function_rule == None:
+                self.error(self.cur_token.srcline, f"function {self.cur_token.text} is not supported yet")
+            else:
+                function_rule()

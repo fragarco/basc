@@ -5,7 +5,7 @@ CLS
 PRINT "Select Yes or No (Y/N)?"
 
 mainloop:
-'    a$=INKEY$
+    a$=INKEY$
 
 '    IF a$="" THEN mainloop
 '    IF a$="y" OR a$="Y" THEN endyes
