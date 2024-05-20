@@ -3,7 +3,7 @@
 
 CLS
 b = 3
-a = 5 + 8 - b
+a = 5 * 8 - b
 
 'a$ = "Select Yes or No (Y/N)?"
 'PRINT a$

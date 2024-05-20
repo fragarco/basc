@@ -206,8 +206,7 @@ class BASParser:
                 self.expression()
                 entry = self.symtab_addident(symbol.text, symbol.srcline, self.cur_expr)
                 if  entry != None:
-                    self.emitter.expression(self.cur_expr)
-                    self.emitter.store(entry.symbol)
+                    self.emitter.assign(entry.symbol, self.cur_expr)
             else:
                 self.error(symbol.srcline, ErrorCode.SYNTAX)
         elif self.cur_token.is_keyword():

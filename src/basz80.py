@@ -17,7 +17,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import sys
-from basz80lib import SM2Z80, FWCALL, STRLIB
+from basz80lib import SM2Z80, FWCALL, STRLIB, MATHLIB
 from bastypes import BASTypes
 
 class Z80Backend:
@@ -48,12 +48,32 @@ class Z80Backend:
     def emitlibcode(self, code):
         self.libcode.append(code + '\n')
 
+    def _emitauxcode(self, inst):
+        if inst == "MUL" or inst == "UMUL":
+            self._addlibfunc(MATHLIB, "mult16_unsigned")
+            self._addlibfunc(MATHLIB, "sign_extract")
+            self._addlibfunc(MATHLIB, "sign_strip")
+            self._addlibfunc(MATHLIB, "mult16_signed")
+        elif inst == "DIV" or inst == "UDIV":
+            self._addlibfunc(MATHLIB, "div16_unsigned")
+            self._addlibfunc(MATHLIB, "sign_extract")
+            self._addlibfunc(MATHLIB, "sign_strip")
+            self._addlibfunc(MATHLIB, "div16_signed")
+        elif inst == "MOD":
+            self._addlibfunc(MATHLIB, "div16_unsigned")
+            self._addlibfunc(MATHLIB, "mod16")
+        elif inst in ["LT", "GT", "LE", "GE"]:
+            self._addlibfunc(MATHLIB, "comp16_signed")
+            self._addlibfunc(MATHLIB, "comp16_unsigned")
+            
+    
     def emitcode(self, inst, arg, prefix):
         if inst == "LIBCALL":
             # BASIC original function
             self.emit_rtcall(arg)
         elif inst in SM2Z80:
             code = SM2Z80[inst]
+            self._emitauxcode(inst)
             for line in code:
                 if arg != None: line = line.replace('$ARG1', arg)
                 self.code.append(prefix + line + '\n')
@@ -123,14 +143,11 @@ class Z80Backend:
         self._addcode("\tand     &07   ;valid stream range 0-7")
         self._addcode(f"\tcall    {FWCALL.TXT_STR_SELECT} ;TXT_STR_SELECT")
         self._addcode(f"\tcall    {FWCALL.TXT_CLEAR_WINDOW} ;TXT_CLEAR_WINDOW")
-        self._addcode("\tpop     hl")
 
     def rtcall_MODE(self):
         self._addcode("\tpush    af")
         self._addcode("\tld      a,l")
-        self._addcode("\tpush    hl")
         self._addcode(f"\tcall    {FWCALL.SCR_SET_MODE} ;SCR_SET_MODE")
-        self._addcode("\tpop     hl")
         self._addcode("\tpop     af")
 
     def rtcall_PRINT(self):

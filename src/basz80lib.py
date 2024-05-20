@@ -45,339 +45,338 @@ SM2Z80 = {
         "ld      (ix+L),l"
         ],
     'STINDR': [
-        "ex de,hl",
-        "pop hl",
-        "ld (hl),e",
-        "inc hl",
-        "ld (hl),d"
+        "ex      de,hl",
+        "pop     hl",
+        "ld      (hl),e",
+        "inc     hl",
+        "ld      (hl),d"
         ],
     'STINDB': [
-        "ex de,hl",
-        "pop hl",
-        "ld (hl),e"
+        "ex      de,hl",
+        "pop     hl",
+        "ld      (hl),e"
         ],
     'INCGLOB': [
-        "ld hl,$ARG1",
-        "inc (hl)",
-        "jrnz +2",
-        "inc hl",
-        "inc (hl)"
+        "ld      hl,$ARG1",
+        "inc     (hl)",
+        "jrnz    +2",
+        "inc     hl",
+        "inc     (hl)"
         ],
     'INCLOCL': [
-        "inc (ix+L)",
-        "jrnz +3",
-        "inc (ix+H)"
+        "inc     (ix+L)",
+        "jrnz    +3",
+        "inc     (ix+H)"
         ],
     'INCR': [
-        "ld de,$ARG1",
-        "add hl,de"
+        "ld      de,$ARG1",
+        "add     hl,de"
         ],
     'STACK': [
-        "ld hl,$ARG1",
-        "add hl,sp",
-        "ld sp,hl"
+        "ld      hl,$ARG1",
+        "add     hl,sp",
+        "ld      sp,hl"
         ],
     'UNSTACK': [
-        "ex de,hl",
-        "ld hl,$ARG1",
-        "add hl,sp",
-        "ld sp,hl",
-        "ex de,hl"
+        "ex      de,hl",
+        "ld      hl,$ARG1",
+        "add     hl,sp",
+        "ld      sp,hl",
+        "ex      de,hl"
         ],
-    'LOCLVEC': ["push hl"],
-    'GLOBVEC': ["ld ($ARG1),hl"],
+    'LOCLVEC': ["push    hl"],
+    'GLOBVEC': ["ld      ($ARG1),hl"],
     'INDEX': [
-        "add hl,hl",
-        "pop de",
-        "add hl,de"
+        "add     hl,hl",
+        "pop     de",
+        "add     hl,de"
         ],
     'DEREF': [
-        "ld a,(hl)",
-        "inc hl",
-        "ld h,(hl)",
-        "ld l,a"
+        "ld      a,(hl)",
+        "inc     hl",
+        "ld      h,(hl)",
+        "ld      l,a"
         ],
     'INDXB': [
-        "pop de",
-        "add hl,de"
+        "pop     de",
+        "add     hl,de"
         ],
     'DREFB': [
-        "ld l,(hl)",
-        "ld h,0"
+        "ld      l,(hl)",
+        "ld      h,0"
         ],
-    'CALL': ["call $ARG1"],
-    'CALR': ["call &014A"],  # AAA Revisar
-    'JUMP': ["jp $ARG1"],
-    'RJUMP': ["jr $ARG1"],  # being $ARG1 = $L in original code
+    'CALL': ["call     $ARG1"],
+    'JUMP': ["jp       $ARG1"],
+    'RJUMP': ["jr      $ARG1"],  # being $ARG1 = $L in original code
     'JMPFALSE': [
-        "ld a,h",
-        "or l",
-        "jpz $ARG1"
+        "ld      a,h",
+        "or      l",
+        "jpz     $ARG1"
         ],
     'JMPTRUE': [
-        "ld a,h",
-        "or l",
-        "jpnz $ARG1"
+        "ld      a,h",
+        "or      l",
+        "jpnz    $ARG1"
         ],
     'FOR': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de",
-        "jpp $ARG1"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de",
+        "jpp     $ARG1"
         ],
     'FORDOWN': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "jpp $ARG1"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "jpp     $ARG1"
         ],
     'MKFRAME': [
-        "push ix",
-        "ld ix,0",
-        "add ix,sp"
+        "push    ix",
+        "ld      ix,0",
+        "add     ix,sp"
         ],
-    'DELFRAME': ["pop ix"],
+    'DELFRAME': ["pop     ix"],
     'RET': ["ret"],
-    'HALT': ["jp 0"],
+    'HALT': ["jp      0"],
     'NEG': [
-        "ld de,0",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de"
+        "ld      de,0",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de"
         ],
     'INV': [
-        "ld de,&FFFF",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de"
+        "ld      de,&FFFF",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de"
         ],
     'LOGNOT': [
-        "ex de,hl",
-        "ld hl,&FFFF",
-        "ld a,d",
-        "or e",
-        "jrnz +1",
-        "inc hl"
+        "ex      de,hl",
+        "ld      hl,&FFFF",
+        "ld      a,d",
+        "or      e",
+        "jrnz    +1",
+        "inc     hl"
         ],
     'ADD': [
-        "pop de",
-        "add hl,de"
+        "pop     de",
+        "add     hl,de"
         ],
     'SUB': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de"
         ],
     'MUL': [
-        "pop de",
-        "call &0108"  # AAA Revisar
+        "pop     de",
+        "call    mul16_signed"
         ],
     'DIV': [
-        "pop de",
-        "call &010B"  # AAA Revisar
+        "pop     de",
+        "call    div16_signed"
         ],
     'MOD': [        
-        "pop de",
-        "call &010E"  # AAA Revisar
+        "pop     de",
+        "call    mod_16"
         ],
     'AND': [
-        "pop de",
-        "ld a,h",
-        "and d",
-        "ld h,a",
-        "ld a,l",
-        "and e",
-        "ld l,a"
+        "pop     de",
+        "ld      a,h",
+        "and     d",
+        "ld      h,a",
+        "ld      a,l",
+        "and     e",
+        "ld      l,a"
         ],
     'OR': [
-        "pop de",
-        "ld a,h",
-        "or d",
-        "ld h,a",
-        "ld a,l",
-        "or e",
-        "ld l,a"
+        "pop     de",
+        "ld      a,h",
+        "or      d",
+        "ld      h,a",
+        "ld      a,l",
+        "or      e",
+        "ld      l,a"
         ],
     'XOR': [
-        "pop de",
-        "ld a,h",
-        "xor d",
-        "ld h,a",
-        "ld a,l",
-        "xor e",
-        "ld l,a"
+        "pop     de",
+        "ld      a,h",
+        "xor     d",
+        "ld      h,a",
+        "ld      a,l",
+        "xor     e",
+        "ld      l,a"
         ],
     'SHL': [
-        "pop de",
-        "ex de,hl",
-        "ld b,e",
-        "add hl,hl",
-        "djnz -3"
+        "pop     de",
+        "ex      de,hl",
+        "ld      b,e",
+        "add     hl,hl",
+        "djnz    -3"
         ],
     'SHR': [
-        "pop de",
-        "ex de,hl",
-        "ld b,e",
-        "srl h",
-        "rr l",
-        "djnz -6"
+        "pop     de",
+        "ex      de,hl",
+        "ld      b,e",
+        "srl     h",
+        "rr      l",
+        "djnz    -6"
         ],
     'EQ': [
-        "pop de",
-        "xor a"
-        "sbc hl,de",
-        "ld hl,&FFFF",
-        "jrz +1",
-        "inc hl"
+        "pop     de",
+        "xor     a"
+        "sbc     hl,de",
+        "ld      hl,&FFFF",
+        "jrz     +1",
+        "inc     hl"
         ],
     'NE': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "ld hl,&FFFF",
-        "jrnz +1",
-        "inc hl"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "ld      hl,&FFFF",
+        "jrnz    +1",
+        "inc     hl"
         ],
     'LT': [
-        "pop de",
-        "ex de,hl",
-        "call &0117", # AAA revisar
-        "ld hl,&FFFF",
-        "jrc +1",
-        "inc hl"
+        "pop     de",
+        "ex      de,hl",
+        "call    comp16_signed",
+        "ld      hl,&FFFF",
+        "jrc     +1",
+        "inc     hl"
         ],
     'GT': [
-        "pop de",
-        "call &0117", # AAA revisar
-        "ld hl,&FFFF",
-        "jrc +1",
-        "inc hl"
+        "pop     de",
+        "call    comp16_signed",
+        "ld      hl,&FFFF",
+        "jrc     +1",
+        "inc     hl"
         ],
     'LE': [
-        "pop de",
-        "call &0117",
-        "ld hl,0",
-        "jrc +1",
-        "dec hl"
+        "pop     de",
+        "call    comp16_signed",
+        "ld      hl,0",
+        "jrc     +1",
+        "dec     hl"
         ],
     'GE': [
-        "pop de",
-        "ex de,hl",
-        "call &0117", # AAA revisar
-        "ld hl,0",
-        "jrc +1",
-        "dec hl"
+        "pop     de",
+        "ex      de,hl",
+        "call    comp16_signed",
+        "ld      hl,0",
+        "jrc     +1",
+        "dec     hl"
         ],
     'UMUL': [
-        "pop de",
-        "call &0111" # AAA revisar
+        "pop     de",
+        "call    mul16_unsigned"
         ],
     'UDIV': [
-        "pop de",
-        "ex de,hl",
-        "call &0114" # AAA revisar
+        "pop     de",
+        "ex      de,hl",
+        "call    div16_unsigned"
         ],
     'ULT': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de",
-        "ld hl,&FFFF",
-        "jrc +1",
-        "inc hl"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de",
+        "ld      hl,&FFFF",
+        "jrc     +1",
+        "inc     hl"
         ],
     'UGT': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "ld hl,&FFFF",
-        "jrc +1",
-        "inc hl"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "ld      hl,&FFFF",
+        "jrc     +1",
+        "inc     hl"
         ],
     'ULE': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "ld hl,0",
-        "jrc +1",
-        "dec hl"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "ld      hl,0",
+        "jrc     +1",
+        "dec     hl"
         ],
     'UGE': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de",
-        "ld hl,0",
-        "jrc +1",
-        "dec hl"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de",
+        "ld      hl,0",
+        "jrc     +1",
+        "dec     hl"
         ],
     'JMPEQ': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "jpz $ARG1"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "jpz     $ARG1"
         ],
     'JMPNE': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "jpnz $ARG1"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "jpnz    $ARG1"
         ],
     'JMPLT': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de",
-        "jpm $ARG1"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de",
+        "jpm     $ARG1"
         ],
     'JMPGT': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "jpm $ARG1"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "jpm     $ARG1"
         ],
     'JMPLE': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "jpp $ARG1"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "jpp     $ARG1"
         ],
     'JMPGE': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de",
-        "jpp $ARG1"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de",
+        "jpp     $ARG1"
         ],
     'JMPULT': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de",
-        "jpc $ARG1"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de",
+        "jpc     $ARG1"
         ],
     'JMPUGT': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "jpc $ARG1"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "jpc     $ARG1"
         ],
     'JMPULE': [
-        "pop de",
-        "xor a",
-        "sbc hl,de",
-        "jpnc $ARG1"
+        "pop     de",
+        "xor     a",
+        "sbc     hl,de",
+        "jpnc    $ARG1"
         ],
     'JMPUGE': [
-        "pop de",
-        "ex de,hl",
-        "xor a",
-        "sbc hl,de",
-        "jpnc $ARG1"
+        "pop     de",
+        "ex      de,hl",
+        "xor     a",
+        "sbc     hl,de",
+        "jpnc    $ARG1"
         ],
-    'SKIP': ["jp $ARG1"]
+    'SKIP': ["jp     $ARG1"]
 }
 
 #
@@ -478,4 +477,141 @@ STRLIB = {
         f"\tcall    {FWCALL.TXT_OUTPUT}\n",
         "\tjr      strlib_print_str\n\n"
     ],
+}
+
+
+MATHLIB = {
+    "mult16_unsigned": [
+        "; 16x16 unsigned multplication, HL = HL*DE.\n",
+        "; Algorithm from Rodney Zaks, 'Programming the Z80'.\n",
+        "; Developed by Nils M. Holm (cc0)\n",
+        "mul16_unsigned:\n",
+        "\tld      a,l	; transfer HL to CA\n",
+        "\tld      c,h\n",
+        "\tld      b,16	; 16 bits to multiply\n",
+        "\tld      hl,0\n",
+        "mul0_unsigned:\n",
+        "\tsrl     c		; shift CA right, get low bit\n",
+        "\trra\n",
+        "\tjr      nc,mul1_unsigned	; zero fell out, do not add\n",
+        "\tadd     hl,de	; else add DE\n",
+        "mul1_unsigned:\n",
+        "\tex      de,hl	; DE = DE*2\n",
+        "\tadd     hl,hl\n",
+        "\tex      de,hl\n",
+        "\tdjnz    mul0_unsigned\n",
+        "\tret\n",
+    ],
+    "div16_unsigned": [
+        "; 16/16 unsigned division, HL = HL div DE, DE = HL rem DE.\n",
+        "; Algorithm from Rodney Zaks, 'Programming the Z80'.\n",
+        "; Developed by Nils M. Holm (cc0)\n",
+        "div16_unsigned:\n",
+        "\tld      a,h	; transfer HL to AC\n",
+        "\tld      c,l\n",
+        "\tld      hl,0	; intermediate result\n",
+        "\tld      b,16	; 16 bits to divide\n",
+        "div0_unsigned:\n",
+        "\trl      c		; get AC high bit, rotate in result bit\n",
+        "\trla\n",
+        "\tadc     hl,hl	; HL = HL*2, never sets C\n",
+        "\tsbc     hl,de	; trial subtract and test DE > HL\n",
+        "\tjr      nc,div1_unsigned\n",
+        "\tadd     hl,de	; DE > HL, restore HL\n",
+        "div1_unsigned:\n",
+        "\tccf		; result bit\n",
+        "\tdjnz    div0_unsigned\n",
+        "\trl      c		; rotate in last result bit\n",
+        "\trla\n",
+        "\tld      d,a\n",
+        "\tld      e,c\n",
+        "\tex      de,hl\n",
+	    "\tret\n",
+    ],
+    "sign_extract": [
+        "; extract common sign from two mul/div factors (HL, DE);\n",
+        "; return CY=0, if signs are equal and otherwise CY=1\n",
+        "; Developed by Nils M. Holm (cc0)\n",
+        "sign_extract:\n",
+        "\tld      a,h\n",
+        "\txor     d\n",
+        "\trla		; sign to carry\n",
+        "\tret\n",
+    ],
+    "sign_strip": [    
+        "; strip signs from HL and DE\n",
+        "sign_strip:\n",
+        "\tbit     7,d\n",
+        "\tjr      z,sb0\n",
+        "\tld      a,d\n",
+        "\tcpl\n",
+        "\tld      d,a\n",
+        "\tld      a,e\n",
+        "\tcpl\n",
+        "\tld      e,a\n",
+        "\tinc     de\n",
+        "sb0:\n",
+        "\tbit     7,h\n",
+        "\tret     z\n",
+        "neghl:\n",
+        "\tld      a,h\n",
+        "\tcpl\n",
+        "\tld      h,a\n",
+        "\tld      a,l\n",
+        "\tcpl\n",
+        "\tld      l,a\n",
+        "\tinc     hl\n",
+        "\tret\n",
+    ],
+    "mult16_signed": [
+        "; 15x15 signed multiplication\n",
+        "mul16_signed:\n",	
+        "\tcall    sign_extract\n",
+        "\tpush    af\n",
+        "\tcall    sign_strip\n",
+        "\tcall    mul16_unsigned\n",
+        "\tpop     af\n",
+        "\tret     nc\n",
+        "\tjr      neghl\n",
+    ],
+    "div16_signed": [
+        "; 15/15 signed division\n",
+        "div16_signed:\n",
+        "\tex      de,hl\n",
+        "\tcall    sign_extract\n",
+        "\tpush    af\n",
+        "\tcall    sign_strip\n",
+        "\tcall    div16_unsigned\n",
+        "\tpop     af\n",
+        "\tret     nc\n",
+        "\tjr      neghl\n",
+    ],
+    "mod16": [
+        "; 15/15 unsigned remainder\n",
+        "mod16:\n",
+        "\tex      de,hl\n",
+        "\tcall    div16_unsigned\n",
+        "\tex      de,hl\n",
+        "\tret\n",
+    ],
+    "comp16_signed": [
+        "; signed comparison HL-DE, set Z and CY flags,\n",
+        "; where CY indicates that HL < DE\n",
+        "cmp16_signed:\n",
+        "\txor     a\n",
+        "\tsbc     hl,de\n",
+        "\tret     z\n",
+        "\tjp      m,cs1\n",
+        "\tor      a\n",
+        "\tret\n",
+        "cs1:\n",
+        "\tscf\n",
+        "\tret\n",
+    ],
+    "comp16_unsigned": [
+        "cmp16:\n",
+        "\txor     a\n",
+        "\tsbc     hl,de\n",
+        "\tret\n",
+    ]
 }

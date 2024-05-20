@@ -117,15 +117,12 @@ class SMEmitter:
         self._emit(SMI.LABEL, text, prefix='')
 
     def load_num(self, value):
-        self._emit(SMI.PUSH)
         self._emit(SMI.LDVAL, value)
 
     def load_addr(self, value):
-        self._emit(SMI.PUSH)
         self._emit(SMI.LDADDR, value)
 
     def load_symbol(self, symbol):
-        self._emit(SMI.PUSH)
         self._emit(SMI.LDGLOB, symbol)
 
     def store(self, variable_name):
@@ -145,10 +142,12 @@ class SMEmitter:
             self.abort(f"Operation {op} is not currently supported by the emitter")
     
     def expression(self, expression):
-        for item in expression.expr:
+        for i, item in enumerate(expression.expr):
             if item.isnumeric():
+                if i > 0: self._emit(SMI.PUSH)
                 self.load_num(item)
             elif item.isalnum():
+                if i > 0: self._emit(SMI.PUSH)
                 if expression.is_str():
                     self.load_addr(item)
                 else:
@@ -156,6 +155,10 @@ class SMEmitter:
             else:
                 self.operate(item)
     
+    def assign(self, variable_name, expression):
+        self.expression(expression)
+        self.store(variable_name)
+
     def goto(self, label):
         self._emit(SMI.JUMP, label)
 
