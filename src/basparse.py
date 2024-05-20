@@ -82,7 +82,7 @@ class BASParser:
 
     def symtab_name2type(self, symname):
         forcedtype = BASTypes.NONE
-        symname = symname.lower()
+        symname = 'var' + symname.lower()
         if symname.endswith('$'):
             symname = symname.replace('$', 'tstr')
             forcedtype = BASTypes.STR
@@ -120,7 +120,7 @@ class BASParser:
         return self.symbols.search(symname)
 
     def symtab_newtemp(self, srcline, expr):
-        sname = f"tmpident{self.temp_vars:03d}"
+        sname = f"vartmp{self.temp_vars:03d}"
         entry = self.symtab_addident(sname, srcline, expr)
         entry.temporal = True
         self.temp_vars = self.temp_vars + 1
