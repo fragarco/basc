@@ -2,10 +2,11 @@
 ' of PRINT and INKEY$
 
 CLS
-PRINT "Select Yes or No (Y/N)?"
+a$ = "Select Yes or No (Y/N)?"
+PRINT a$
 
 mainloop:
-    a$=INKEY$
+'    a$=INKEY$
 
 '    IF a$="" THEN mainloop
 '    IF a$="y" OR a$="Y" THEN endyes

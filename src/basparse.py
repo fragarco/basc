@@ -80,6 +80,20 @@ class BASParser:
         self.cur_token = self.peek_token
         self.peek_token = self.lexer.get_token()
 
+    def symtab_name2type(self, symname):
+        forcedtype = BASTypes.NONE
+        symname = symname.lower()
+        if symname.endswith('$'):
+            symname = symname.replace('$', 'tstr')
+            forcedtype = BASTypes.STR
+        elif symname.endswith('!'):
+            symname = symname.replace('!', 'treal')
+            forcedtype = BASTypes.REAL
+        elif symname.endswith('%'): 
+            symname = symname.replace('%', 'tint')
+            forcedtype = BASTypes.INT
+        return symname, forcedtype
+        
     def symtab_addlabel(self, symname, srcline):
         if self.symbols.search(symname):
             self.error(srcline, ErrorCode.LEXISTS)
@@ -87,11 +101,13 @@ class BASParser:
             return self.symbols.add(symname, SymTypes.SYMLAB)
 
     def symtab_addident(self, symname, srcline, expr):
-        # check if symbol exists (nothing to do)
-        symname = symname.replace('$', 's').lower()
+        symname, forcedtype = self.symtab_name2type(symname)
         entry = self.symbols.search(symname)
         if entry == None:
             entry = self.symbols.add(symname, SymTypes.SYMVAR)
+            # force type if it is included in variable name so
+            # check_types will ensure it matches with expression type
+            entry.valtype = forcedtype
         if entry.check_types(expr.type):
             entry.set_value(expr)
         else:
@@ -100,7 +116,7 @@ class BASParser:
         return entry
 
     def symtab_search(self, symname):
-        symname = symname.replace('$', 's').lower()
+        symname, _ = self.symtab_name2type(symname)
         return self.symbols.search(symname)
 
     def symtab_newtemp(self, srcline, expr):
@@ -406,7 +422,7 @@ class BASParser:
         if self.match_current(TokenType.IDENT):
             sym = self.symtab_search(self.cur_token.text)
             if sym != None:
-                if self.cur_expr.pushval(self.cur_token.text, sym.valtype):
+                if self.cur_expr.pushval(sym.symbol, sym.valtype):
                     sym.inc_reads()
                     self.next_token()
                 else:
