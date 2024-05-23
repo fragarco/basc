@@ -340,6 +340,9 @@ class Symbol:
     def is_constant(self):
         return self.puts == 1 and self.is_ident() and len(self.value) == 1
 
+    def is_tmp(self):
+        return self.symbol.startswith('vartmp')
+
     def inc_reads(self):
         """ To control the number of times the symbol value is used """
         self.gets = self.gets + 1

@@ -120,7 +120,7 @@ class BASParser:
         return self.symbols.search(symname)
 
     def symtab_newtemp(self, srcline, expr):
-        sname = f"vartmp{self.temp_vars:03d}"
+        sname = f"tmp{self.temp_vars:03d}"
         entry = self.symtab_addident(sname, srcline, expr)
         entry.temporal = True
         self.temp_vars = self.temp_vars + 1

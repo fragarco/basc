@@ -97,7 +97,7 @@ class Z80Backend:
             elif symbol.valtype == BASTypes.REAL:
                 self.emitdata(f'{symbol.symbol}: dw 0,0')
             elif symbol.valtype == BASTypes.STR:
-                if symbol.is_constant():
+                if symbol.is_constant() and symbol.is_tmp():
                     self.emitdata(f'{symbol.symbol}: db "{symbol.value[0]}",&00')
                 else:    
                     self.emitdata(f'{symbol.symbol}: defs 255')
