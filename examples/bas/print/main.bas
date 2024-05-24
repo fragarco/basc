@@ -14,9 +14,9 @@ mainloop:
 GOTO mainloop
 
 endyes:
-'    PRINT "You have selected YES"
-'    END
+    PRINT "You have selected YES"
+    END
 
 endno:
-'    PRINT "You have selected NO"
-'    END
+    PRINT "You have selected NO"
+    END

@@ -244,6 +244,11 @@ class BASParser:
             self.pop_curexpr()
         self.emitter.rtcall('CLS', args)
 
+    def command_END(self) -> None:
+        """ <command_END> := END """
+        self.emitter.end()
+        self.next_token()
+
     def command_GOTO(self) -> None:
         """ <command_GOTO> := NUMBER | LABEL"""
         assert self.cur_token is not None

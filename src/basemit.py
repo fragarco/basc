@@ -172,6 +172,9 @@ class SMEmitter:
     def goto(self, label: str) -> None:
         self._emit(SMI.JUMP, label)
 
+    def end(self) -> None:
+        self._emit(SMI.JUMP, '0')
+
     def rtcall(self, fname: str, args: List[Expression] = []) -> None:
         if len(args):
             self.expression(args[0])
