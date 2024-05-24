@@ -480,16 +480,14 @@ STRLIB = {
     ],
     "strlib_copy": [
         "; HL = destination\n",
-        "; origin in stack\n",
+        "; DE = origin\n",
         "strlib_strcopy:\n",
-        "\tpop     de\n",
-        "\tex      de,hl\n",
         "__strcopyloop:\n"
-        "\tld      a, (hl)\n",
-        "\tld      (de), a\n",
+        "\tld      a, (de)\n",
+        "\tld      (hl), a\n",
         "\tinc     hl\n",
         "\tinc     de\n",
-        "\tor      a\n",
+        "\tcp      0\n",
         "\tjr      nz,__strcopyloop\n",
         "\tret\n\n",
     ]

@@ -154,4 +154,5 @@ class Z80Backend:
 
     def rtcall_STRCOPY(self) -> None:
         self._addlibfunc(STRLIB, "strlib_copy")
-        self._addcode("\tcall   strlib_strcopy")
+        self._addcode("\tpop     de")
+        self._addcode("\tcall    strlib_strcopy")
