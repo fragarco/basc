@@ -34,7 +34,7 @@ def process_args():
     args = parser.parse_args()
     return args
 
-def main():
+def main() -> None:
     args = process_args()
     if args.out == None:
         args.out = args.infile.rsplit('.')[0]

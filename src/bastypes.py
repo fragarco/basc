@@ -16,6 +16,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import enum
+from typing import Optional, List, Dict
 
 class ErrorCode:
     NEXT    = "Unexpected NEXT"
@@ -261,6 +262,7 @@ class TokenType(enum.Enum):
     NOTEQ = 602
     LTEQ = 603
     GTEQ = 604
+    NEG = 605
 
     # Separators
     TK_SEPARATORS = 700
@@ -274,38 +276,138 @@ class Token:
     """
     This class helps to store the original text and the type of a token.
     """
-    def __init__(self, tktext, tktype, srcline):
-        self.text = tktext   # The token's actual text. Used for identifiers, strings, and numbers.
-        self.type = tktype   # The TokenType that this token is classified as.
-        self.srcline = srcline
+    def __init__(self, tktext: str, tktype: TokenType, srcline: int) -> None:
+        self.text = tktext      # The token's actual text. Used for identifiers, strings, and numbers.
+        self.type = tktype      # The TokenType that this token is classified as.
+        self.srcline = srcline  # line number of the source code where this token belongs to.
 
     @staticmethod
-    def get_keyword(tktext):
-        if tktext[-1] == '$': tktext = tktext[:-1] + 'S'
+    def get_keyword(tktext: str) -> Optional[TokenType]:
+        if tktext.endswith('$'): tktext = tktext[:-1] + 'S'
         for tktype in TokenType:
-            # Relies on all keyword enum values being 1XX.
+            # Relies on all keyword enum values being between [ABS : TK_NUM_OPS]
             if tktype.name == tktext and tktype.value > TokenType.ABS.value and tktype.value < TokenType.TK_NUM_OPS.value:
                 return tktype
         return None
 
-    def is_keyword(self):
+    def is_keyword(self) -> bool:
         # Check if the token is in the list of keywords.
         return Token.get_keyword(self.text) != None
 
-    def is_num_op(self):
+    def is_num_op(self) -> bool:
         # Check if the token is in the list of numerical operations.
-        return self.text != '' and (self.text in "+-*/\\" or self.text == 'MOD')
+        return self.text in ['+','-','*','/','\\','MOD']
 
-    def is_logic_op(self):
+    def is_logic_op(self) -> bool:
         # Check if the token is in the list of logical operations.
-        return self.text in ['=','<>','>','<','>=','<=']
+        return self.text in ['=','<>','>','<','>=','<=','AND','OR','XOR']
 
+    def is_ident(self) -> bool:
+        # Check if the token is an identifier
+        return self.type == TokenType.IDENT
+    
+    def is_str(self) -> bool:
+        # Check if the token is a string literal
+        return self.type == TokenType.STRING
+    
+    def is_int(self) -> bool:
+        # Check if the token is a string literal
+        return self.type == TokenType.INTEGER
+    
+    def is_real(self) -> bool:
+        # Check if the token is a string literal
+        return self.type == TokenType.REAL
+
+    
 class BASTypes(enum.Enum):
     INT     = 0
     REAL    = 1
     STR     = 2
     VOID    = 3
     NONE    = 4
+
+class Expression:
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self.expr: List[Token] = []
+        self.type: BASTypes = BASTypes.NONE
+
+    def is_empty(self) -> bool:
+        return len(self.expr) == 0
+
+    def is_complex(self) -> bool:
+        return len(self.expr) > 1
+
+    def is_simple(self) -> bool:
+        return len(self.expr) == 1
+
+    def is_int(self) -> bool:
+        return self.type.value == BASTypes.INT.value
+
+    def is_real(self) -> bool:
+        return self.type.value == BASTypes.REAL.value
+
+    def is_str(self) -> bool:
+        return self.type.value == BASTypes.STR.value
+
+    def is_void(self) -> bool:
+        return self.type.value == BASTypes.VOID.value
+    
+    def is_none(self) -> bool:
+        return self.type.value == BASTypes.NONE.value
+    
+    def check_types(self, bastype: BASTypes) -> bool:
+        return self.type == bastype or self.type == BASTypes.NONE
+
+    def check_op(self, op: str) -> bool:
+        if self.type == BASTypes.STR:
+            # permited operators on strings are:
+            validops = ['+', '=', '>', '<', '<>', '>=', '<=']
+            return op in validops
+        # numeric types supports all operators
+        return True
+
+    def pushval(self, symbol: Token, bastype: BASTypes) -> bool:
+        self.expr.append(symbol)
+        if not self.check_types(bastype):
+            return False
+        self.type = bastype
+        return True
+    
+    def pushop(self, symbol: Token) -> bool:
+        self.expr.append(symbol)
+        return self.check_op(symbol.text)
+
+    def __str__(self) -> str:
+        text = "["
+        for token in self.expr:
+            text = text + f"({token.text})"
+        text = text + f"] of type {str(self.type)}"
+        return text
+    
+    @staticmethod
+    def int(literal: str):
+        expr = Expression()
+        token = Token(literal, TokenType.INTEGER, -1)
+        expr.pushval(token, BASTypes.INT)
+        return expr
+    
+    @staticmethod
+    def string(literal: str):
+        expr = Expression()
+        token = Token(literal, TokenType.STRING, -1)
+        expr.pushval(token, BASTypes.STR)
+        return expr
+    
+    @staticmethod
+    def real(literal: str):
+        expr = Expression()
+        token = Token(literal, TokenType.REAL, -1)
+        expr.pushval(token, BASTypes.REAL)
+        return expr
 
 class SymTypes(enum.Enum):
     SYMVAR   = 0
@@ -317,30 +419,30 @@ class Symbol:
     of type INT, REAL or STR.
     """
 
-    def __init__(self, sname, stype):
+    def __init__(self, sname: str, stype: SymTypes) -> None:
         self.symbol = sname
         self.symtype = stype
-        self.value = None
+        self.value: List[Token] = []
         self.valtype = BASTypes.NONE
         self.temporal = False
         self.puts = 0
         self.gets = 0
     
-    def set_value(self, expr):
+    def set_value(self, expr: Expression):
         self.value = expr.expr
         self.valtype = expr.type
         self.inc_writes()
     
-    def is_ident(self):
+    def is_ident(self) -> bool:
         return self.symtype == SymTypes.SYMVAR
     
-    def is_label(self):
+    def is_label(self) -> bool:
         return self.symtype == SymTypes.SYMLAB
     
-    def is_constant(self):
+    def is_constant(self) -> bool:
         return self.puts == 1 and self.is_ident() and len(self.value) == 1
 
-    def is_tmp(self):
+    def is_tmp(self) -> bool:
         return self.symbol.startswith('vartmp')
 
     def inc_reads(self):
@@ -351,110 +453,35 @@ class Symbol:
         """ To control the number of times the symbol value is changed """
         self.puts = self.puts + 1
 
-    def check_types(self, bastype):
+    def check_types(self, bastype: BASTypes) -> bool:
         return self.valtype == bastype or self.valtype == BASTypes.NONE
 
-    def print(self):
+    def print(self) -> None:
         print(self.symbol + ' -', self.symtype, ':', self.valtype, self.value)
         print("\treads:", self.gets, "writes:", self.puts)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.symbol) + ' - ' + str(self.symtype) + ': ' + str(self.valtype) + ' ' + str(self.value)
 
 class SymbolTable:
     """ table of symbols found during the compilation process """
 
-    def __init__(self):
-        self.symbols = {}
+    def __init__(self) -> None:
+        self.symbols: Dict[str, Symbol] = {}
     
-    def add(self, sname, stype):
+    def add(self, sname: str, stype: SymTypes) -> Symbol:
         symbol = Symbol(sname, stype)
         self.symbols[sname] = symbol
         return symbol
 
-    def get(self, sname):
+    def get(self, sname: str) -> Symbol:
         return self.symbols[sname]
 
-    def search(self, sname):
+    def search(self, sname: str) -> Optional[Symbol]:
         if sname in self.symbols.keys():
             return self.symbols[sname]
         return None
 
-    def getsymbols(self):
-        return self.symbols.keys()
+    def getsymbols(self) -> List[str]:
+        return list(self.symbols.keys())
 
-class Expression:
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.expr = []
-        self.type = BASTypes.NONE
-
-    def is_empty(self):
-        return len(self.expr) == 0
-
-    def is_complex(self):
-        return len(self.expr) > 1
-
-    def is_simple(self):
-        return len(self.expr) == 1
-
-    def is_int(self):
-        return self.type.value == BASTypes.INT.value
-
-    def is_real(self):
-        return self.type.value == BASTypes.REAL.value
-
-    def is_str(self):
-        return self.type.value == BASTypes.STR.value
-
-    def is_void(self):
-        return self.type.value == BASTypes.VOID.value
-    
-    def is_none(self):
-        return self.type.value == BASTypes.NONE.value
-    
-    def check_types(self, bastype):
-        return self.type == bastype or self.type == BASTypes.NONE
-
-    def check_op(self, op):
-        if self.type == BASTypes.STR:
-            # permited operators on strings are:
-            validops = ['+', '=', '>', '<', '<>', '>=', '<=']
-            return op in validops
-        # numeric types supports all operators
-        return True
-
-    def pushval(self, symbol, bastype):
-        self.expr.append(symbol)
-        if not self.check_types(bastype):
-            return False
-        self.type = bastype
-        return True
-    
-    def pushop(self, symbol):
-        self.expr.append(symbol)
-        return self.check_op(symbol)
-
-    def __str__(self):
-        return str(self.expr) + " of type " + str(self.type)
-    
-    @staticmethod
-    def int(literal):
-        expr = Expression()
-        expr.pushval(literal, BASTypes.INT)
-        return expr
-    
-    @staticmethod
-    def str(literal):
-        expr = Expression()
-        expr.pushval(literal, BASTypes.STR)
-        return expr
-    
-    @staticmethod
-    def real(literal):
-        expr = Expression()
-        expr.pushval(literal, BASTypes.REAL)
-        return expr

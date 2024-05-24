@@ -15,120 +15,122 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 import sys
-from bastypes import Expression, BASTypes
+from typing import List, Tuple
+from bastypes import Expression
 
 class SMI:
     """ Stack Machine Instructions """
-    NOP = 'NOP'
-    REM  = 'REM'
-    LABEL = 'LABEL'
-    PUSH = 'PUSH'
-    CLEAR = 'CLEAR'
-    DROP = 'DROP'
-    LDVAL = 'LDVAL'
-    LDADDR = 'LDADDR'
-    LDLREF = 'LDLREF'
-    LDGLOB = 'LDGLOB'
-    LDLOCL = 'LDLOCL'
-    STGLOB = 'STGLOB'
-    STLOCL = 'STLOCL'
-    STINDR = 'STINDR'
-    STINDB = 'STINDB'
+    NOP     = 'NOP'
+    REM     = 'REM'
+    LABEL   = 'LABEL'
+    PUSH    = 'PUSH'
+    CLEAR   = 'CLEAR'
+    DROP    = 'DROP'
+    LDVAL   = 'LDVAL'
+    LDADDR  = 'LDADDR'
+    LDLREF  = 'LDLREF'
+    LDGLOB  = 'LDGLOB'
+    LDLOCL  = 'LDLOCL'
+    STGLOB  = 'STGLOB'
+    STLOCL  = 'STLOCL'
+    STINDR  = 'STINDR'
+    STINDB  = 'STINDB'
     INCGLOB = 'INCGLOB'
     INCLOCL = 'INCLOCL'
-    INCR = 'INCR'
-    STACK = 'STACK'
+    INCR    = 'INCR'
+    STACK   = 'STACK'
     UNSTACK = 'UNSTACK'
     LOCLVEC = 'LOCLVEC'
     GLOBVEC = 'GLOBVEC'
-    INDEX = 'INDEX'
-    DEREF = 'DEREF'
-    INDXB = 'INDXB'
-    DREFB = 'DREFB'
-    CALL = 'CALL'
-    CALR = 'CALR'
+    INDEX   = 'INDEX'
+    DEREF   = 'DEREF'
+    INDXB   = 'INDXB'
+    DREFB   = 'DREFB'
+    CALL    = 'CALL'
+    CALR    = 'CALR'
     LIBCALL = 'LIBCALL'
-    JUMP = 'JUMP'
-    RJUMP = 'RJUMP'
-    JMPFALSE = 'JMPFALSE'
+    JUMP    = 'JUMP'
+    RJUMP   = 'RJUMP'
+    JMPFALSE= 'JMPFALSE'
     JMPTRUE = 'JMPTRUE'
-    FOR = 'FOR'
+    FOR     = 'FOR'
     FORDOWN = 'FORDOWN'
     MKFRAME = 'MKFRAME'
-    DELFRAME = 'DELFRAME'
-    RET = 'RET'
-    HALT = 'HALT'
-    NEG = 'NEG'
-    INV = 'INV'
-    LOGNOT = 'LOGNOT'
-    ADD = 'ADD'
-    SUB = 'SUB'
-    MUL = 'MUL'
-    DIV = 'DIV'
-    MOD = 'MOD'
-    AND = 'AND'
-    OR = 'OR'
-    XOR = 'XOR'
-    SHL = 'SHL'
-    SHR = 'SHR'
-    EQ = 'EQ'
-    NE = 'NE'
-    LT = 'LT'
-    GT = 'GT'
-    LE = 'LE'
-    GE = 'GE'
-    UMUL = 'UMUL'
-    UDIV = 'UDIV'
-    ULT = 'ULT'
-    UGT = 'UGT'
-    ULE = 'ULE'
-    UGE = 'UGE'
-    JMPEQ = 'JMPEQ'
-    JMPNE = 'JMPNE'
-    JMPLT = 'JMPLT'
-    JMPGT = 'JMPGT'
-    JMPLE = 'JMPLE'
-    JMPGE = 'JMPGE'
-    JMPULT = 'JMPULT'
-    JMPUGT = 'JMPUGT'
-    JMPULE = 'JMPULE'
-    JMPUGE = 'JMPUGE'
-    SKIP = 'SKIP'
+    DELFRAME= 'DELFRAME'
+    RET     = 'RET'
+    HALT    = 'HALT'
+    NEG     = 'NEG'
+    INV     = 'INV'
+    LOGNOT  = 'LOGNOT'
+    ADD     = 'ADD'
+    SUB     = 'SUB'
+    MUL     = 'MUL'
+    DIV     = 'DIV'
+    MOD     = 'MOD'
+    AND     = 'AND'
+    OR      = 'OR'
+    XOR     = 'XOR'
+    SHL     = 'SHL'
+    SHR     = 'SHR'
+    EQ      = 'EQ'
+    NE      = 'NE'
+    LT      = 'LT'
+    GT      = 'GT'
+    LE      = 'LE'
+    GE      = 'GE'
+    UMUL    = 'UMUL'
+    UDIV    = 'UDIV'
+    ULT     = 'ULT'
+    UGT     = 'UGT'
+    ULE     = 'ULE'
+    UGE     = 'UGE'
+    JMPEQ   = 'JMPEQ'
+    JMPNE   = 'JMPNE'
+    JMPLT   = 'JMPLT'
+    JMPGT   = 'JMPGT'
+    JMPLE   = 'JMPLE'
+    JMPGE   = 'JMPGE'
+    JMPULT  = 'JMPULT'
+    JMPUGT  = 'JMPUGT'
+    JMPULE  = 'JMPULE'
+    JMPUGE  = 'JMPUGE'
+    SKIP    = 'SKIP'
 
 class SMEmitter:
     """
     Intermediate Stack Machine emitter for the Amstrad CPC BAS compiler
     """
 
-    def __init__(self):
-        self.code = []
+    def __init__(self) -> None:
+        """ code is (SMI opcode, optional param, optional string prefix to use in output text)"""
+        self.code: List[Tuple[str, str, str]] = []
 
-    def abort(self, message):
-        print(message)
+    def abort(self, message: str) -> None:
+        print(f"Fatal error: {message}")
         sys.exit(1)
 
-    def _emit(self, opcode, param = None, prefix = '\t'):
+    def _emit(self, opcode: str, param: str = '', prefix: str = '\t') -> None:
         self.code.append((opcode, param, prefix))
 
-    def remark(self, text):
+    def remark(self, text: str) -> None:
         self._emit(SMI.REM, text.strip(), prefix='')
 
-    def label(self, text):
+    def label(self, text: str) -> None:
         self._emit(SMI.LABEL, text, prefix='')
 
-    def load_num(self, value):
+    def load_num(self, value: str) -> None:
         self._emit(SMI.LDVAL, value)
 
-    def load_addr(self, value):
+    def load_addr(self, value: str) -> None:
         self._emit(SMI.LDADDR, value)
 
-    def load_symbol(self, symbol):
+    def load_symbol(self, symbol: str) -> None:
         self._emit(SMI.LDGLOB, symbol)
 
-    def store(self, variable_name):
+    def store(self, variable_name: str) -> None:
         self._emit(SMI.STGLOB, variable_name)
 
-    def operate(self, op):
+    def operate(self, op: str) -> None:
         if   op == '+': self._emit(SMI.ADD)
         elif op == '-': self._emit(SMI.SUB)
         elif op == '*': self._emit(SMI.MUL)
@@ -141,28 +143,25 @@ class SMEmitter:
         else:
             self.abort(f"Operation {op} is not currently supported by the emitter")
     
-    def expression(self, expression):
-        for i, item in enumerate(expression.expr):
-            if item.isnumeric():
+    def expression(self, expression: Expression) -> None:
+        for i, token in enumerate(expression.expr):
+            if token.is_int():
                 if i > 0: self._emit(SMI.PUSH)
-                self.load_num(item)
-            elif item.isalnum():
+                self.load_num(token.text)
+            elif token.is_ident():
                 if i > 0: self._emit(SMI.PUSH)
-                if expression.is_str():
-                    self.load_addr(item)
-                else:
-                    self.load_symbol(item)
+                self.load_symbol(token.text)
             else:
-                self.operate(item)
+                self.operate(token.text)
     
-    def assign(self, variable_name, expression):
+    def assign(self, variable_name: str, expression: Expression) -> None:
         self.expression(expression)
         self.store(variable_name)
 
-    def goto(self, label):
+    def goto(self, label: str) -> None:
         self._emit(SMI.JUMP, label)
 
-    def rtcall(self, fname, args = []):
+    def rtcall(self, fname: str, args: List[Expression] = []) -> None:
         if len(args):
             self.expression(args[0])
             for i in range(1,len(args)):
