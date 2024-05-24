@@ -469,6 +469,7 @@ STRLIB = {
         "\tret\n\n"
     ],
     "strlib_print_str": [
+        "; HL = address to the string to print\n",
         "strlib_print_str:\n",
         "\tld      a, (hl)\n",
         "\tcp      0\n",
@@ -477,6 +478,21 @@ STRLIB = {
         f"\tcall    {FWCALL.TXT_OUTPUT}\n",
         "\tjr      strlib_print_str\n\n"
     ],
+    "strlib_copy": [
+        "; HL = destination\n",
+        "; origin in stack\n",
+        "strlib_strcopy:\n",
+        "\tpop     de\n",
+        "\tex      de,hl\n",
+        "__strcopyloop:\n"
+        "\tld      a, (hl)\n",
+        "\tld      (de), a\n",
+        "\tinc     hl\n",
+        "\tinc     de\n",
+        "\tor      a\n",
+        "\tjr      nz,__strcopyloop\n",
+        "\tret\n\n",
+    ]
 }
 
 

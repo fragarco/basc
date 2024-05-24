@@ -150,13 +150,24 @@ class SMEmitter:
                 self.load_num(token.text)
             elif token.is_ident():
                 if i > 0: self._emit(SMI.PUSH)
-                self.load_symbol(token.text)
+                if expression.is_str():
+                    # memory address
+                    self._emit(SMI.LDADDR, token.text)
+                else:
+                    # stored value
+                    self.load_symbol(token.text)
             else:
                 self.operate(token.text)
     
     def assign(self, variable_name: str, expression: Expression) -> None:
         self.expression(expression)
-        self.store(variable_name)
+        if expression.is_str():
+            # assign of strings means copy memory
+            self._emit(SMI.PUSH)
+            self._emit(SMI.LDADDR, variable_name)
+            self._emit(SMI.LIBCALL, 'STRCOPY')
+        else:
+            self.store(variable_name)
 
     def goto(self, label: str) -> None:
         self._emit(SMI.JUMP, label)
