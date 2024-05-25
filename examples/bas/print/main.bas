@@ -6,8 +6,8 @@ a$ = "Select Yes or No (Y/N)?"
 PRINT a$
 
 mainloop:
-'    a$=INKEY$
-
+    a$=INKEY$
+    print A$
 '    IF a$="" THEN mainloop
 '    IF a$="y" OR a$="Y" THEN endyes
 '    IF a$="N" OR a$="n" THEN endno

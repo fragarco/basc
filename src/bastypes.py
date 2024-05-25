@@ -396,12 +396,12 @@ class Expression:
         return expr
     
     @staticmethod
-    def string(literal: str):
+    def string(literal: str, size: int = 255):
         expr = Expression()
         token = Token(literal, TokenType.STRING, -1)
         expr.pushval(token, BASTypes.STR)
         return expr
-    
+
     @staticmethod
     def real(literal: str):
         expr = Expression()

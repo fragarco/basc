@@ -140,6 +140,15 @@ class Z80Backend:
         self._addcode(f"\tcall    {FWCALL.TXT_STR_SELECT} ;TXT_STR_SELECT")
         self._addcode(f"\tcall    {FWCALL.TXT_CLEAR_WINDOW} ;TXT_CLEAR_WINDOW")
 
+    def rtcall_INKEYS(self) -> None:
+        self._addcode(f"\tcall    {FWCALL.KM_READ_CHAR} ;KM_READ_CHAR")
+        self._addcode("\tjr      c,@+3  ; if not character then A=0")
+        self._addcode("\txor     a")
+        self._addcode("\tpop     hl     ; destination address")
+        self._addcode("\tld      (hl),a")
+        self._addcode("\tinc     hl")
+        self._addcode("\tld      (hl),&00")
+
     def rtcall_MODE(self) -> None:
         self._addcode("\tpush    af")
         self._addcode("\tld      a,l")
@@ -156,3 +165,4 @@ class Z80Backend:
         self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tpop     de")
         self._addcode("\tcall    strlib_strcopy")
+

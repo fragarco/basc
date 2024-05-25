@@ -15,8 +15,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 import sys
-from typing import List, Tuple
-from bastypes import Expression
+from typing import List, Tuple, Optional
+from bastypes import Expression, Symbol
 
 class SMI:
     """ Stack Machine Instructions """
@@ -175,7 +175,11 @@ class SMEmitter:
     def end(self) -> None:
         self._emit(SMI.JUMP, '0')
 
-    def rtcall(self, fname: str, args: List[Expression] = []) -> None:
+    def rtcall(self, fname: str, args: List[Expression] = [], retsym: Optional[Symbol] = None) -> None:
+        if retsym is not None:
+            # store the address for the result of a function call
+            self._emit(SMI.LDADDR, retsym.symbol)
+            self._emit(SMI.PUSH)
         if len(args):
             self.expression(args[0])
             for i in range(1,len(args)):

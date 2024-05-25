@@ -120,7 +120,7 @@ class BASParser:
         symname, _ = self.symtab_name2type(symname)
         return self.symbols.search(symname)
 
-    def symtab_newtemp(self, srcline, expr) -> Optional[Symbol]:
+    def symtab_newtemp(self, srcline: int, expr: Expression) -> Optional[Symbol]:
         sname = f"tmp{self.temp_vars:03d}"
         entry = self.symtab_addident(sname, srcline, expr)
         if entry is not None:
@@ -284,6 +284,16 @@ class BASParser:
         self.arg_str()
         self.emitter.rtcall('PRINT', [self.cur_expr])      
         self.pop_curexpr()
+
+    def function_INKEYS(self) -> None:
+        """ function_INKEYS := INKEYS """
+        # no need of pushing current expression as this function has not
+        # parameters
+        sym = self.symtab_newtemp(self.cur_token.srcline, Expression.string(' '))
+        self.emitter.rtcall('INKEYS', [], sym)
+        tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
+        self.cur_expr.pushval(tmpident, BASTypes.STR)
+        self.next_token()
 
     # Argument rules
 
