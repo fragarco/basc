@@ -27,11 +27,10 @@ class SMI:
     CLEAR   = 'CLEAR'
     DROP    = 'DROP'
     LDVAL   = 'LDVAL'
-    LDADDR  = 'LDADDR'
+    LDMEM   = 'LDMEM'
+    STMEM   = 'STMEM'
     LDLREF  = 'LDLREF'
-    LDGLOB  = 'LDGLOB'
     LDLOCL  = 'LDLOCL'
-    STGLOB  = 'STGLOB'
     STLOCL  = 'STLOCL'
     STINDR  = 'STINDR'
     STINDB  = 'STINDB'
@@ -122,13 +121,13 @@ class SMEmitter:
         self._emit(SMI.LDVAL, value)
 
     def load_addr(self, value: str) -> None:
-        self._emit(SMI.LDADDR, value)
+        self._emit(SMI.LDVAL, value)
 
     def load_symbol(self, symbol: str) -> None:
-        self._emit(SMI.LDGLOB, symbol)
+        self._emit(SMI.LDMEM, symbol)
 
     def store(self, variable_name: str) -> None:
-        self._emit(SMI.STGLOB, variable_name)
+        self._emit(SMI.STMEM, variable_name)
 
     def operate(self, op: str) -> None:
         if   op == '+': self._emit(SMI.ADD)
@@ -140,6 +139,11 @@ class SMEmitter:
         elif op == 'XOR': self._emit(SMI.XOR)
         elif op == 'AND': self._emit(SMI.AND)
         elif op == 'OR': self._emit(SMI.OR)
+        elif op == '=': self._emit(SMI.EQ)
+        elif op == '<': self._emit(SMI.LT)
+        elif op == '>': self._emit(SMI.GT)
+        elif op == '>=': self._emit(SMI.GE)
+        elif op == '<=': self._emit(SMI.LE)
         else:
             self.abort(f"Operation {op} is not currently supported by the emitter")
     
@@ -152,19 +156,23 @@ class SMEmitter:
                 if i > 0: self._emit(SMI.PUSH)
                 if expression.is_str():
                     # memory address
-                    self._emit(SMI.LDADDR, token.text)
+                    self._emit(SMI.LDVAL, token.text)
                 else:
                     # stored value
                     self.load_symbol(token.text)
             else:
                 self.operate(token.text)
     
+    def logical_expr(self, expr: Expression, jumplabel: str) -> None:
+        self.expression(expr)
+        self._emit(SMI.JMPFALSE, jumplabel)
+
     def assign(self, variable_name: str, expression: Expression) -> None:
         self.expression(expression)
         if expression.is_str():
             # assign of strings means copy memory
             self._emit(SMI.PUSH)
-            self._emit(SMI.LDADDR, variable_name)
+            self._emit(SMI.LDVAL, variable_name)
             self._emit(SMI.LIBCALL, 'STRCOPY')
         else:
             self.store(variable_name)
@@ -178,7 +186,7 @@ class SMEmitter:
     def rtcall(self, fname: str, args: List[Expression] = [], retsym: Optional[Symbol] = None) -> None:
         if retsym is not None:
             # store the address for the result of a function call
-            self._emit(SMI.LDADDR, retsym.symbol)
+            self._emit(SMI.LDVAL, retsym.symbol)
             self._emit(SMI.PUSH)
         if len(args):
             self.expression(args[0])

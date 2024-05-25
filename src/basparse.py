@@ -81,6 +81,7 @@ class BASParser:
         self.peek_token = self.lexer.get_token()
 
     def symtab_name2type(self, symname: str) -> Tuple[str, BASTypes]:
+        """ Lets enforce variable types """
         forcedtype = BASTypes.NONE
         symname = 'var' + symname.lower()
         if symname.endswith('$'):
@@ -120,9 +121,17 @@ class BASParser:
         symname, _ = self.symtab_name2type(symname)
         return self.symbols.search(symname)
 
-    def symtab_newtemp(self, srcline: int, expr: Expression) -> Optional[Symbol]:
+    def symtab_newtmpvar(self, srcline: int, expr: Expression) -> Optional[Symbol]:
         sname = f"tmp{self.temp_vars:03d}"
         entry = self.symtab_addident(sname, srcline, expr)
+        if entry is not None:
+            entry.temporal = True
+            self.temp_vars = self.temp_vars + 1
+        return entry
+
+    def symtab_newtmplabel(self, srcline: int) -> Optional[Symbol]:
+        sname = f"labeltmp{self.temp_vars:03d}"
+        entry = self.symtab_addlabel(sname, srcline)
         if entry is not None:
             entry.temporal = True
             self.temp_vars = self.temp_vars + 1
@@ -249,8 +258,35 @@ class BASParser:
         self.emitter.end()
         self.next_token()
 
+    def command_IF(self) -> None:
+        """ <command_IF> := IF <expression> (THEN|GOTO) (LABEL | NUMBER | <statements>) [ELSE (LABEL| NUMBER | <statements>)] NEWLINE"""
+        assert self.cur_token is not None
+        self.next_token()
+        line = self.cur_token.srcline
+        endthen = self.symtab_newtmplabel(line)
+        if endthen is not None:
+            self.expression()
+            self.emitter.logical_expr(self.cur_expr, endthen.symbol)
+            if self.match_current(TokenType.GOTO):
+                self.command_GOTO()
+            else:
+                self.error(line, ErrorCode.SYNTAX)
+            self.emitter.label(endthen.symbol)
+
+    def function_INKEYS(self) -> None:
+        """ <function_INKEYS> := INKEYS """
+        # no need of pushing current expression as this function has not
+        # parameters
+        assert self.cur_token is not None
+        sym = self.symtab_newtmpvar(self.cur_token.srcline, Expression.string(""))
+        if sym is not None:
+            self.emitter.rtcall('INKEYS', [], sym)
+            tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
+            self.cur_expr.pushval(tmpident, BASTypes.STR)
+            self.next_token()
+
     def command_GOTO(self) -> None:
-        """ <command_GOTO> := NUMBER | LABEL"""
+        """ <command_GOTO> := GOTO (NUMBER | LABEL)"""
         assert self.cur_token is not None
         # if the label doesn't exit, the assembler will fail
         # this allow us to jump to a forward label/line
@@ -268,7 +304,7 @@ class BASParser:
             self.error(line, ErrorCode.SYNTAX)
 
     def command_MODE(self) -> None:
-        """ command_MODE := MODE <arg_int> """
+        """ <command_MODE> := MODE <arg_int> """
         assert self.cur_token is not None
         self.next_token()
         self.push_curexpr()
@@ -277,7 +313,7 @@ class BASParser:
         self.pop_curexpr()
 
     def command_PRINT(self) -> None:
-        """ command_PRINT := PRINT <arg_str> """
+        """ <command_PRINT> := PRINT <arg_str> """
         assert self.cur_token is not None
         self.next_token()
         self.push_curexpr()
@@ -285,15 +321,9 @@ class BASParser:
         self.emitter.rtcall('PRINT', [self.cur_expr])      
         self.pop_curexpr()
 
-    def function_INKEYS(self) -> None:
-        """ function_INKEYS := INKEYS """
-        # no need of pushing current expression as this function has not
-        # parameters
-        sym = self.symtab_newtemp(self.cur_token.srcline, Expression.string(' '))
-        self.emitter.rtcall('INKEYS', [], sym)
-        tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
-        self.cur_expr.pushval(tmpident, BASTypes.STR)
-        self.next_token()
+    def command_THEN(self) -> None:
+        assert self.cur_token is not None
+        self.error(self.cur_token.srcline, ErrorCode.THEN)
 
     # Argument rules
 
@@ -488,7 +518,7 @@ class BASParser:
                 # add that variable to the expression
                 strexpr = Expression()
                 strexpr.pushval(self.cur_token, BASTypes.STR)
-                sym = self.symtab_newtemp(self.cur_token.srcline, strexpr)
+                sym = self.symtab_newtmpvar(self.cur_token.srcline, strexpr)
                 if sym is not None:
                     self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.STR)
                     self.next_token()

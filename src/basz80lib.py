@@ -20,26 +20,25 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 # Stack machine to Z80 code fragments 
 #
 SM2Z80 = {
-    'NOP': [],
+    'NOP':    [],
     'LABEL':  ["$ARG1:"],
     'REM':    ["; $ARG1"], 
     'PUSH':   ["push    hl"],
     'CLEAR':  ["ld      hl,0"],
     'DROP':   ["pop     de"],
     'LDVAL':  ["ld      hl,$ARG1"],
-    'LDADDR': ["ld      hl,$ARG1"],
+    'LDMEM':  ["ld      hl,($ARG1)"],
+    'STMEM':  ["ld      ($ARG1),hl"],
     'LDLREF': [
         "ld      hl,$ARG1",
         "push    ix",
         "pop     de",
         "add     hl,de"
         ],
-    'LDGLOB': ["ld      hl,($ARG1)"],
     'LDLOCL': [
         "ld      h,(ix+H)",
         "ld      l,(ix+L)"
         ],
-    'STGLOB': ["ld      ($ARG1),hl"],
     'STLOCL': [
         "ld      (ix+H),h",
         "ld      (ix+L),l"
@@ -59,13 +58,13 @@ SM2Z80 = {
     'INCGLOB': [
         "ld      hl,$ARG1",
         "inc     (hl)",
-        "jrnz    +2",
+        "jrnz    @+2",
         "inc     hl",
         "inc     (hl)"
         ],
     'INCLOCL': [
         "inc     (ix+L)",
-        "jrnz    +3",
+        "jrnz    @+3",
         "inc     (ix+H)"
         ],
     'INCR': [
@@ -105,18 +104,18 @@ SM2Z80 = {
         "ld      l,(hl)",
         "ld      h,0"
         ],
-    'CALL': ["call     $ARG1"],
-    'JUMP': ["jp       $ARG1"],
+    'CALL':  ["call    $ARG1"],
+    'JUMP':  ["jp      $ARG1"],
     'RJUMP': ["jr      $ARG1"],  # being $ARG1 = $L in original code
     'JMPFALSE': [
         "ld      a,h",
         "or      l",
-        "jpz     $ARG1"
+        "jp      z,$ARG1"
         ],
     'JMPTRUE': [
         "ld      a,h",
         "or      l",
-        "jpnz    $ARG1"
+        "jp      nz,$ARG1"
         ],
     'FOR': [
         "pop     de",
@@ -156,7 +155,7 @@ SM2Z80 = {
         "ld      hl,&FFFF",
         "ld      a,d",
         "or      e",
-        "jrnz    +1",
+        "jrnz    @+3",
         "inc     hl"
         ],
     'ADD': [
@@ -225,49 +224,49 @@ SM2Z80 = {
         ],
     'EQ': [
         "pop     de",
-        "xor     a"
+        "xor     a",
         "sbc     hl,de",
-        "ld      hl,&FFFF",
-        "jrz     +1",
-        "inc     hl"
+        "ld      hl,&FFFF  ; hl = -1",
+        "jr      z,@+3",
+        "inc     hl        ; hl = 0"
         ],
     'NE': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "ld      hl,&FFFF",
-        "jrnz    +1",
-        "inc     hl"
+        "ld      hl,&FFFF  ; hl = -1",
+        "jr      nz,@+3",
+        "inc     hl        ; hl = 0"
         ],
     'LT': [
         "pop     de",
         "ex      de,hl",
         "call    comp16_signed",
-        "ld      hl,&FFFF",
-        "jrc     +1",
-        "inc     hl"
+        "ld      hl,&FFFF  ; hl = -1",
+        "jr      c,@+3",
+        "inc     hl        ; hl = 0"
         ],
     'GT': [
         "pop     de",
         "call    comp16_signed",
-        "ld      hl,&FFFF",
-        "jrc     +1",
-        "inc     hl"
+        "ld      hl,&FFFF  ; hl = -1",
+        "jr      c,@+3",
+        "inc     hl        ; hl = 0"
         ],
     'LE': [
         "pop     de",
         "call    comp16_signed",
-        "ld      hl,0",
-        "jrc     +1",
-        "dec     hl"
+        "ld      hl,0      ; hl = 0",
+        "jr      c,@+3",
+        "dec     hl        ; hl = -1"
         ],
     'GE': [
         "pop     de",
         "ex      de,hl",
         "call    comp16_signed",
-        "ld      hl,0",
-        "jrc     +1",
-        "dec     hl"
+        "ld      hl,0      ; hl = 0",
+        "jr      c,@+3",
+        "dec     hl        ; hl = -1"
         ],
     'UMUL': [
         "pop     de",
@@ -283,98 +282,98 @@ SM2Z80 = {
         "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "ld      hl,&FFFF",
-        "jrc     +1",
-        "inc     hl"
+        "ld      hl,&FFFF  ; hl = -1",
+        "jr      c,@+3",
+        "inc     hl        ; hl = 0"
         ],
     'UGT': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "ld      hl,&FFFF",
-        "jrc     +1",
-        "inc     hl"
+        "ld      hl,&FFFF  ; hl = -1",
+        "jr      c,@+3",
+        "inc     hl        ; hl = 0"
         ],
     'ULE': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "ld      hl,0",
-        "jrc     +1",
-        "dec     hl"
+        "ld      hl,0      ; hl = 0",
+        "jr      c,@+3",
+        "dec     hl        ; hl = -1"
         ],
     'UGE': [
         "pop     de",
         "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "ld      hl,0",
-        "jrc     +1",
-        "dec     hl"
+        "ld      hl,0      ; hl = 0",
+        "jr      c,@+3",
+        "dec     hl        ; hl = -1"
         ],
     'JMPEQ': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "jpz     $ARG1"
+        "jp      z,$ARG1"
         ],
     'JMPNE': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "jpnz    $ARG1"
+        "jp      nz,$ARG1"
         ],
     'JMPLT': [
         "pop     de",
         "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "jpm     $ARG1"
+        "jp      m,$ARG1"
         ],
     'JMPGT': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "jpm     $ARG1"
+        "jp      m,$ARG1"
         ],
     'JMPLE': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "jpp     $ARG1"
+        "jp      p,$ARG1"
         ],
     'JMPGE': [
         "pop     de",
         "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "jpp     $ARG1"
+        "jp      p,$ARG1"
         ],
     'JMPULT': [
         "pop     de",
         "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "jpc     $ARG1"
+        "jp      c,$ARG1"
         ],
     'JMPUGT': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "jpc     $ARG1"
+        "jp      c,$ARG1"
         ],
     'JMPULE': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "jpnc    $ARG1"
+        "jp      nc,$ARG1"
         ],
     'JMPUGE': [
         "pop     de",
         "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "jpnc    $ARG1"
+        "jp      nc,$ARG1"
         ],
     'SKIP': ["jp     $ARG1"]
 }
@@ -491,17 +490,17 @@ class FWCALL:
 STRLIB = {
     "strlib_print_nl": [
         "strlib_print_nl:\n",
-        "\tld      a, 13\n",
+        "\tld      a,13\n",
         f"\tcall    {FWCALL.TXT_OUTPUT}\n",
-        "\tld      a, 10\n",
+        "\tld      a,10\n",
         f"\tcall    {FWCALL.TXT_OUTPUT}\n",
         "\tret\n\n"
     ],
     "strlib_print_str": [
         "; HL = address to the string to print\n",
         "strlib_print_str:\n",
-        "\tld      a, (hl)\n",
-        "\tcp      0\n",
+        "\tld      a,(hl)\n",
+        "\tor      a\n",
         "\tret     z\n",
         "\tinc     hl\n",
         f"\tcall    {FWCALL.TXT_OUTPUT}\n",
@@ -512,11 +511,11 @@ STRLIB = {
         "; DE = origin\n",
         "strlib_strcopy:\n",
         "__strcopyloop:\n"
-        "\tld      a, (de)\n",
-        "\tld      (hl), a\n",
+        "\tld      a,(de)\n",
+        "\tld      (hl),a\n",
         "\tinc     hl\n",
         "\tinc     de\n",
-        "\tcp      0\n",
+        "\tor      a\n",
         "\tjr      nz,__strcopyloop\n",
         "\tret\n\n",
     ]

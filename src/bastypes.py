@@ -23,6 +23,7 @@ class ErrorCode:
     RESUME  = "Unexpected RESUME"
     RETURN  = "Unexpected RETURN"
     WEND    = "Unexpected WEND"
+    THEN    = "Unexpected THEN"
     NONEXT  = "NEXT missing"
     NOWEND  = "WEND missing"
     NORESUME= "RESUME missing"
@@ -221,24 +222,25 @@ class TokenType(enum.Enum):
     TAN = 250
     TEST = 251
     TESTR = 252
-    TIME = 253
-    TRON = 254
-    TROFF = 255
-    UNT = 256
-    UPPERS = 257
-    VAL = 258
-    VPOS = 259
-    WAIT = 260
-    WEND = 261
-    WHILE = 262
-    WIDTH = 263
-    WINDOW = 264
-    WINDOW_SWAP = 265
-    WRITE = 266
-    XOR = 267
-    XPOS = 268
-    YPOS = 269
-    ZONE = 270
+    THEN = 253
+    TIME = 254
+    TRON = 255
+    TROFF = 256
+    UNT = 257
+    UPPERS = 258
+    VAL = 259
+    VPOS = 260
+    WAIT = 261
+    WEND = 262
+    WHILE = 263
+    WIDTH = 264
+    WINDOW = 265
+    WINDOW_SWAP = 266
+    WRITE = 267
+    XOR = 268
+    XPOS = 269
+    YPOS = 270
+    ZONE = 271
 
     # Numeric expression tokens
     TK_NUM_OPS = 500
@@ -396,7 +398,7 @@ class Expression:
         return expr
     
     @staticmethod
-    def string(literal: str, size: int = 255):
+    def string(literal: str):
         expr = Expression()
         token = Token(literal, TokenType.STRING, -1)
         expr.pushval(token, BASTypes.STR)

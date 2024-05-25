@@ -555,8 +555,11 @@ def op_DEFB(p, opargs):
         texts = re.findall(r'"(.*?)"', arg)
         if len(texts) == 0: texts = re.findall(r"'(.*?)'", arg)
         if len(texts) > 0:
-            # text string between "" or ''
-            bytes = bytes + list(texts[0].encode('latin-1'))
+            # text string between "" or '', special case is '' which
+            # produces an empty list but should write &00
+            txtbytes = list(texts[0].encode('latin-1'))
+            if len(txtbytes) == 0: txtbytes = [0]
+            bytes = bytes + txtbytes
         else:
             byte = 0 if p == 1 else g_context.parse_expression(arg, byte = 1)
             bytes.append(byte)
