@@ -7,11 +7,12 @@ PRINT a$
 
 mainloop:
     a$=INKEY$
+    IF a$="" THEN mainloop
     print A$
-'    IF a$="" THEN mainloop
 '    IF a$="y" OR a$="Y" THEN endyes
 '    IF a$="N" OR a$="n" THEN endno
-GOTO mainloop
+pause:
+    GOTO pause
 
 endyes:
     PRINT "You have selected YES"
