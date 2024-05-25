@@ -282,6 +282,7 @@ class Token:
         self.text = tktext      # The token's actual text. Used for identifiers, strings, and numbers.
         self.type = tktype      # The TokenType that this token is classified as.
         self.srcline = srcline  # line number of the source code where this token belongs to.
+        self.srcpos = 0         # optional, position in source code where it starts
 
     @staticmethod
     def get_keyword(tktext: str) -> Optional[TokenType]:

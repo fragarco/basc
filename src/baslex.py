@@ -154,6 +154,14 @@ class BASLexer:
             self.next_char()
         return self.source[start_pos : self.cur_pos + 1].upper()
 
+    def rollback(self) -> Optional[Token]:
+        if self.last_token is not None:
+            self.cur_pos = self.last_token.srcpos
+            self.cur_line = self.last_token.srcline
+            self.cur_char = self.source[self.cur_pos]
+            return self.get_token()
+        return None
+
     def get_token(self) -> Optional[Token]:
         """
         Consumes source code characters until a valid Token can be created or
@@ -162,7 +170,8 @@ class BASLexer:
         self.lstrip()
         self.skip_comment()
         token = None
-
+        inipos = self.cur_pos
+    
         # Check current pointed character to see if we can decide what it is.
         if self.cur_char == '\n':
             token = Token('', TokenType.NEWLINE, self.cur_line)
@@ -206,6 +215,7 @@ class BASLexer:
             self.abort("unexpected character found '" + self.cur_char + "'")
 
         if token is not None:
+            token.srcpos = inipos
             if token.type == TokenType.NEWLINE:
                 # we are going to start a new line of code
                 self.cur_line = self.cur_line + 1

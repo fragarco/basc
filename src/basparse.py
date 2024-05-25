@@ -80,6 +80,11 @@ class BASParser:
         self.cur_token = self.peek_token
         self.peek_token = self.lexer.get_token()
 
+    def rollback_token(self) -> None:
+        """ Goes back to the previous token."""
+        self.peek_token = self.cur_token
+        self.cur_token = self.lexer.rollback()
+
     def symtab_name2type(self, symname: str) -> Tuple[str, BASTypes]:
         """ Lets enforce variable types """
         forcedtype = BASTypes.NONE
@@ -180,15 +185,25 @@ class BASParser:
             self.lines()
 
     def line(self) -> None:
-        """ <line> := INTEGER NEWLINE | INTEGER <statements> NEWLINE"""
+        """ <line> := INTEGER NEWLINE | INTEGER ID: NEWLINE | INTEGER <statements> NEWLINE"""
         assert self.cur_token is not None
         if self.match_current(TokenType.INTEGER):
             self.emitter.remark(self.get_curcode())
             self.emitter.label(self.get_linelabel(self.cur_token.text))
             self.next_token()
             if self.match_current(TokenType.NEWLINE):
-                 # This was a full line remark (' or REM) removed by the lexer
-                 self.next_token()
+                # This was a full line remark (' or REM) removed by the lexer
+                self.next_token()
+            elif self.match_current(TokenType.IDENT) and self.match_next(TokenType.COLON):
+                # Label that can be used by GOTO, THEN, GOSUB, etc.
+                self.symtab_addlabel(self.cur_token.text, self.cur_token.srcline)
+                self.emitter.label(self.cur_token.text)
+                self.next_token()
+                self.next_token()
+                if self.match_current(TokenType.NEWLINE):
+                    self.next_token()
+                else:
+                    self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
             else:
                 self.statements()
                 if self.match_current(TokenType.NEWLINE):
@@ -206,21 +221,17 @@ class BASParser:
               self.statements()
 
     def statement(self) -> None:
-        """  <statement> = ID ':' NEWLINE | ID '=' <expression> | <keyword>"""
+        """  <statement> = ID '=' <expression> | <keyword>"""
         assert self.cur_token is not None
         self.reset_curexpr()
         if self.match_current(TokenType.IDENT):
             symbol = self.cur_token
             self.next_token()
-            if self.match_current(TokenType.COLON) and self.match_next(TokenType.NEWLINE):
-                self.symtab_addlabel(symbol.text, symbol.srcline)
-                self.emitter.label(symbol.text)
-                self.next_token()
-            elif self.match_current(TokenType.EQ):
+            if self.match_current(TokenType.EQ):
                 self.next_token()
                 self.expression()
                 entry = self.symtab_addident(symbol.text, symbol.srcline, self.cur_expr)
-                if  entry is not None:
+                if entry is not None:
                     self.emitter.assign(entry.symbol, self.cur_expr)
             else:
                 self.error(symbol.srcline, ErrorCode.SYNTAX)
@@ -269,6 +280,17 @@ class BASParser:
             self.emitter.logical_expr(self.cur_expr, endthen.symbol)
             if self.match_current(TokenType.GOTO):
                 self.command_GOTO()
+            elif self.match_current(TokenType.THEN):
+                self.next_token()
+                if self.match_current(TokenType.INTEGER):
+                    label = self.get_linelabel(self.cur_token.text)
+                    self.emitter.goto(label)
+                    self.next_token()
+                elif self.match_current(TokenType.IDENT) and self.match_next(TokenType.ELSE) or self.match_next(TokenType.NEWLINE):
+                    self.emitter.goto(self.cur_token.text)
+                    self.next_token()
+                else:
+                    self.error(line, ErrorCode.SYNTAX)    
             else:
                 self.error(line, ErrorCode.SYNTAX)
             self.emitter.label(endthen.symbol)

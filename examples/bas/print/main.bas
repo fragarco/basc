@@ -1,20 +1,16 @@
 ' Simple example of jumping to labels and the use
 ' of PRINT and INKEY$
-a = 5
-if a = 4 goto loop
-end
-loop:
-print "hola"
-goto loop
 
-'CLS
-'a$ = "Select Yes or No (Y/N)?"
-'PRINT a$
+CLS
+PRINT "Select Yes or No (Y/N)?"
 
-'mainloop:
-'    a$=INKEY$
-'    IF a$="" GOTO mainloop
-'    print A$
+mainloop:
+    a$=INKEY$
+    IF a$="" THEN mainloop
+print a$
+endless:
+    goto endless
+
 '    IF a$="y" OR a$="Y" THEN endyes
 '    IF a$="N" OR a$="n" THEN endno
 'pause:
