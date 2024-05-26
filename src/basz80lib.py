@@ -510,14 +510,32 @@ STRLIB = {
         "; HL = destination\n",
         "; DE = origin\n",
         "strlib_strcopy:\n",
-        "__strcopyloop:\n"
         "\tld      a,(de)\n",
         "\tld      (hl),a\n",
         "\tinc     hl\n",
         "\tinc     de\n",
         "\tor      a\n",
-        "\tjr      nz,__strcopyloop\n",
+        "\tjr      nz,strlib_strcopy\n",
         "\tret\n\n",
+    ],
+    "strlib_comp": [
+        "; HL = second string start\n",
+        "; DE = first string start\n",
+        "strlib_strcomp:\n",
+        "\tld      a,(de)\n",
+        "\tor      (hl)\n",
+        "\tjr      nz,__strlib_strcomp_next\n",
+        "\tld      hl,0  ; HL = 0 they are equal\n",
+        "\tret\n",
+        "__strlib_strcomp_next:\n",
+        "\tcp   (hl)\n",
+        "\tinc  hl\n",
+        "\tinc  de\n",
+        "\tjr   z,strlib_strcomp  ; identical characters\n",
+        "\tld   hl,1     ; HL = 1 ; second string is greater\n", 
+        "\tret  nc\n",
+        "\tld   hl,&FFFF ; HL =-1 ; second string is least\n",
+        "\tret\n"
     ]
 }
 

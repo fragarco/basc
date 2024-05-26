@@ -129,7 +129,7 @@ class SMEmitter:
     def store(self, variable_name: str) -> None:
         self._emit(SMI.STMEM, variable_name)
 
-    def operate(self, op: str) -> None:
+    def operate_int(self, op: str) -> None:
         if   op == '+': self._emit(SMI.ADD)
         elif op == '-': self._emit(SMI.SUB)
         elif op == '*': self._emit(SMI.MUL)
@@ -145,8 +145,17 @@ class SMEmitter:
         elif op == '>=': self._emit(SMI.GE)
         elif op == '<=': self._emit(SMI.LE)
         else:
-            self.abort(f"Operation {op} is not currently supported by the emitter")
+            self.abort(f"Operation {op} is not currently supported with integers")
     
+    def operate_real(self, op: str) -> None:
+        self.abort(f"Operation {op} is not currently supported with real numbers")
+
+    def operate_str(self, op: str) -> None:
+        if   op == '=':
+            self._emit(SMI.LIBCALL, 'STRCOMP')
+        else:
+            self.abort(f"Operation {op} is not currently supported with strings")
+
     def expression(self, expression: Expression) -> None:
         for i, token in enumerate(expression.expr):
             if token.is_int():
@@ -161,7 +170,11 @@ class SMEmitter:
                     # stored value
                     self.load_symbol(token.text)
             else:
-                self.operate(token.text)
+                if   expression.is_int(): self.operate_int(token.text)
+                elif expression.is_real(): self.operate_real(token.text)
+                elif expression.is_str(): self.operate_str(token.text)
+                else:
+                    self.abort(f"Expression has not a valid type (integer, real, string)")
     
     def logical_expr(self, expr: Expression, jumplabel: str) -> None:
         self.expression(expr)

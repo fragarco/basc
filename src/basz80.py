@@ -161,6 +161,11 @@ class Z80Backend:
         self._addcode("\tcall    strlib_print_str")
         self._addcode("\tcall    strlib_print_nl")
 
+    def rtcall_STRCOMP(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_comp")
+        self._addcode("\tpop     de")
+        self._addcode("\tcall    strlib_strcomp")
+
     def rtcall_STRCOPY(self) -> None:
         self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tpop     de")

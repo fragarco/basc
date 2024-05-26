@@ -274,26 +274,24 @@ class BASParser:
         assert self.cur_token is not None
         self.next_token()
         line = self.cur_token.srcline
-        endthen = self.symtab_newtmplabel(line)
-        if endthen is not None:
+        endif = self.symtab_newtmplabel(line)
+        if endif is not None:
             self.expression()
-            self.emitter.logical_expr(self.cur_expr, endthen.symbol)
+            self.emitter.logical_expr(self.cur_expr, endif.symbol)
             if self.match_current(TokenType.GOTO):
                 self.command_GOTO()
             elif self.match_current(TokenType.THEN):
-                self.next_token()
-                if self.match_current(TokenType.INTEGER):
-                    label = self.get_linelabel(self.cur_token.text)
-                    self.emitter.goto(label)
-                    self.next_token()
-                elif self.match_current(TokenType.IDENT) and self.match_next(TokenType.ELSE) or self.match_next(TokenType.NEWLINE):
-                    self.emitter.goto(self.cur_token.text)
-                    self.next_token()
-                else:
-                    self.error(line, ErrorCode.SYNTAX)    
+                self.command_GOTO() 
             else:
                 self.error(line, ErrorCode.SYNTAX)
-            self.emitter.label(endthen.symbol)
+            if self.match_current(TokenType.ELSE):
+                endelse = self.symtab_newtmplabel(line)
+                if endelse is not None:
+                    self.emitter.goto(endelse.symbol)
+                    self.emitter.label(endif.symbol)
+                    endif = endelse
+                    self.command_GOTO()
+            self.emitter.label(endif.symbol)
 
     def function_INKEYS(self) -> None:
         """ <function_INKEYS> := INKEYS """
