@@ -367,9 +367,8 @@ class Expression:
 
     def check_op(self, op: str) -> bool:
         if self.type == BASTypes.STR:
-            # permited operators on strings are:
-            validops = ['+', '=', '>', '<', '<>', '>=', '<=']
-            return op in validops
+            # permited operators with strings
+            return op in  ['+']
         # numeric types supports all operators
         return True
 
@@ -382,6 +381,9 @@ class Expression:
     
     def pushop(self, symbol: Token) -> bool:
         self.expr.append(symbol)
+        # Logic operators change type to integer as their result is TRUE or FALSE
+        if symbol.text in ['=', '>', '<', '<>', '>=', '<=']:
+            self.type = BASTypes.INT
         return self.check_op(symbol.text)
 
     def __str__(self) -> str:
