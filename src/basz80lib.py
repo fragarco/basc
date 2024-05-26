@@ -137,7 +137,7 @@ SM2Z80 = {
         ],
     'DELFRAME': ["pop     ix"],
     'RET': ["ret"],
-    'HALT': ["jp      0"],
+    'HALT': ["halt"],
     'NEG': [
         "ld      de,0",
         "ex      de,hl",

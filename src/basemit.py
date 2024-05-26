@@ -194,7 +194,7 @@ class SMEmitter:
         self._emit(SMI.JUMP, label)
 
     def end(self) -> None:
-        self._emit(SMI.JUMP, '0')
+        self._emit(SMI.HALT)
 
     def rtcall(self, fname: str, args: List[Expression] = [], retsym: Optional[Symbol] = None) -> None:
         if retsym is not None:
