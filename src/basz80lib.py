@@ -523,22 +523,19 @@ STRLIB = {
         "; DE = first string start\n",
         "strlib_strcomp:\n",
         "\tld      a,(de)\n",
-        "\tor      (hl)\n",
+        "\tcp      0     ; lets keep A untouched\n",
         "\tjr      nz,__strlib_strcomp_next\n",
-        "\tld      hl,0  ; HL = 0 they are equal\n",
+        "\tld      hl,&FFFF  ; HL =-1 (true) they are equal\n",
         "\tret\n",
         "__strlib_strcomp_next:\n",
-        "\tcp   (hl)\n",
-        "\tinc  hl\n",
-        "\tinc  de\n",
-        "\tjr   z,strlib_strcomp  ; identical characters\n",
-        "\tld   hl,1     ; HL = 1 ; second string is greater\n", 
-        "\tret  nc\n",
-        "\tld   hl,&FFFF ; HL =-1 ; second string is least\n",
+        "\tcp      (hl)\n",
+        "\tinc     hl\n",
+        "\tinc     de\n",
+        "\tjr      z,strlib_strcomp  ; identical characters\n",
+        "\tld      hl,0    ; HL = 0 (false) they are different\n", 
         "\tret\n"
-    ]
+    ],
 }
-
 
 MATHLIB = {
     "mult16_unsigned": [

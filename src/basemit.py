@@ -178,7 +178,7 @@ class SMEmitter:
     
     def logical_expr(self, expr: Expression, jumplabel: str) -> None:
         self.expression(expr)
-        self._emit(SMI.JMPFALSE, jumplabel)
+        self._emit(SMI.JMPFALSE, jumplabel)     
 
     def assign(self, variable_name: str, expression: Expression) -> None:
         self.expression(expression)
