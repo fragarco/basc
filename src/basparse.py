@@ -115,7 +115,7 @@ class BASParser:
             # force type if it is included in variable name so
             # check_types will ensure it matches with expression type
             entry.valtype = forcedtype
-        if entry.check_types(expr.type):
+        if entry.check_types(expr.restype):
             entry.set_value(expr)
             return entry
         else:
@@ -354,7 +354,7 @@ class BASParser:
         if self.match_current(TokenType.CHANNEL):
             self.next_token()
             self.expression()
-            if not self.cur_expr.is_int():
+            if not self.cur_expr.is_int_result():
                 self.error(line, ErrorCode.TYPE)
         else:
             self.error(line, ErrorCode.SYNTAX)
@@ -366,7 +366,7 @@ class BASParser:
         self.expression()
         if self.cur_expr.is_empty():
             self.error(line, ErrorCode.SYNTAX)
-        if not self.cur_expr.is_int():
+        if not self.cur_expr.is_int_result():
             self.error(line, ErrorCode.TYPE)
 
     def arg_real(self) -> None:
@@ -376,7 +376,7 @@ class BASParser:
         self.expression()
         if self.cur_expr.is_empty():
             self.error(line, ErrorCode.SYNTAX)
-        if not self.cur_expr.is_real():
+        if not self.cur_expr.is_real_result():
             self.error(line, ErrorCode.TYPE)
 
     def arg_str(self) -> None:
@@ -386,7 +386,7 @@ class BASParser:
         self.expression()
         if self.cur_expr.is_empty():
             self.error(line, ErrorCode.SYNTAX)
-        if not self.cur_expr.is_str():
+        if not self.cur_expr.is_str_result():
             self.error(line, ErrorCode.TYPE)
 
     # Expression rules
