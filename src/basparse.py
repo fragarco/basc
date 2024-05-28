@@ -515,35 +515,26 @@ class BASParser:
                 # store the token in the expression with the name keep in the
                 # symbols table
                 token = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
-                if self.cur_expr.pushval(token, sym.valtype):
-                    sym.inc_reads()
-                    self.next_token()
-                else:
-                    self.error(self.cur_token.srcline, ErrorCode.TYPE)
+                self.cur_expr.pushval(token, sym.valtype)
+                sym.inc_reads()
+                self.next_token()
             else:
                 self.error(self.cur_token.srcline, ErrorCode.NOIDENT)
         elif self.match_current(TokenType.INTEGER):
-            if self.cur_expr.pushval(self.cur_token, BASTypes.INT):
-                self.next_token()
-            else:
-                self.error(self.cur_token.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushval(self.cur_token, BASTypes.INT)
+            self.next_token()
         elif self.match_current(TokenType.REAL):
-            if self.cur_expr.pushval(self.cur_token, BASTypes.REAL):
-                self.next_token()
-            else:
-                self.error(self.cur_token.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushval(self.cur_token, BASTypes.REAL)
+            self.next_token()
         elif self.match_current(TokenType.STRING):
-            if self.cur_expr.is_str() or self.cur_expr.is_none():
-                # create a constant variable to assign the string literal and 
-                # add that variable to the expression
-                strexpr = Expression()
-                strexpr.pushval(self.cur_token, BASTypes.STR)
-                sym = self.symtab_newtmpvar(self.cur_token.srcline, strexpr)
-                if sym is not None:
-                    self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.STR)
-                    self.next_token()
-            else:
-                self.error(self.cur_token.srcline, ErrorCode.TYPE)
+            # create a constant variable to assign the string literal and 
+            # add that variable to the expression
+            strexpr = Expression()
+            strexpr.pushval(self.cur_token, BASTypes.STR)
+            sym = self.symtab_newtmpvar(self.cur_token.srcline, strexpr)
+            if sym is not None:
+                self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.STR)
+                self.next_token()
         else:
             fname = self.cur_token.text.replace('$', 'S').upper()
             function_rule = getattr(self, "function_" + fname, None)

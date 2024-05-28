@@ -321,7 +321,9 @@ class Token:
         # Check if the token is a string literal
         return self.type == TokenType.REAL
 
-    
+    def __str__(self) -> None:
+        return f"({self.text},{self.type},{self.srcline})"
+
 class BASTypes(enum.Enum):
     INT     = 0
     REAL    = 1
@@ -399,7 +401,7 @@ class Expression:
 
     def __str__(self) -> str:
         text = "["
-        for token, type in self.expr:
+        for (token, type) in self.expr:
             text = text + f"({token.text},{type})"
         return text
     
