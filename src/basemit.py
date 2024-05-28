@@ -16,7 +16,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 import sys
 from typing import List, Tuple, Optional
-from bastypes import Expression, Symbol
+from bastypes import Expression, Symbol, BASTypes
 
 class SMI:
     """ Stack Machine Instructions """
@@ -157,24 +157,24 @@ class SMEmitter:
             self.abort(f"Operation {op} is not currently supported with strings")
 
     def expression(self, expression: Expression) -> None:
-        for i, token in enumerate(expression.expr):
+        for i, (token, type) in enumerate(expression.expr):
             if token.is_int():
                 if i > 0: self._emit(SMI.PUSH)
                 self.load_num(token.text)
             elif token.is_ident():
                 if i > 0: self._emit(SMI.PUSH)
-                if expression.is_str():
+                if type == BASTypes.STR:
                     # memory address
                     self._emit(SMI.LDVAL, token.text)
                 else:
                     # stored value
                     self.load_symbol(token.text)
             else:
-                if   expression.is_int(): self.operate_int(token.text)
-                elif expression.is_real(): self.operate_real(token.text)
-                elif expression.is_str(): self.operate_str(token.text)
+                if   type == BASTypes.INT: self.operate_int(token.text)
+                elif type == BASTypes.REAL:self.operate_real(token.text)
+                elif type == BASTypes.STR: self.operate_str(token.text)
                 else:
-                    self.abort(f"Expression has not a valid type (integer, real, string)")
+                    self.abort("Expression has not a valid type (integer, real, string)")
     
     def logical_expr(self, expr: Expression, jumplabel: str) -> None:
         self.expression(expr)
@@ -182,7 +182,7 @@ class SMEmitter:
 
     def assign(self, variable_name: str, expression: Expression) -> None:
         self.expression(expression)
-        if expression.is_str():
+        if expression.is_str_result():
             # assign of strings means copy memory
             self._emit(SMI.PUSH)
             self._emit(SMI.LDVAL, variable_name)

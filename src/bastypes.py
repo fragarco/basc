@@ -16,7 +16,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import enum
-from typing import Optional, List, Dict
+from typing import Optional, List, Tuple, Dict
 
 class ErrorCode:
     NEXT    = "Unexpected NEXT"
@@ -335,8 +335,8 @@ class Expression:
         self.reset()
 
     def reset(self) -> None:
-        self.expr: List[Token] = []
-        self.type: BASTypes = BASTypes.NONE
+        self.expr: List[Tuple[Token, BASTypes]] = []
+        self.restype: BASTypes = BASTypes.NONE  # Final result type
 
     def is_empty(self) -> bool:
         return len(self.expr) == 0
@@ -347,50 +347,60 @@ class Expression:
     def is_simple(self) -> bool:
         return len(self.expr) == 1
 
-    def is_int(self) -> bool:
-        return self.type.value == BASTypes.INT.value
+    def is_int_result(self) -> bool:
+        return self.restype.value == BASTypes.INT.value
 
-    def is_real(self) -> bool:
-        return self.type.value == BASTypes.REAL.value
+    def is_real_result(self) -> bool:
+        return self.restype.value == BASTypes.REAL.value
 
-    def is_str(self) -> bool:
-        return self.type.value == BASTypes.STR.value
+    def is_str_result(self) -> bool:
+        return self.restype.value == BASTypes.STR.value
 
-    def is_void(self) -> bool:
-        return self.type.value == BASTypes.VOID.value
+    def is_void_result(self) -> bool:
+        return self.restype.value == BASTypes.VOID.value
     
-    def is_none(self) -> bool:
-        return self.type.value == BASTypes.NONE.value
+    def is_none_result(self) -> bool:
+        return self.restype.value == BASTypes.NONE.value
     
     def check_types(self, bastype: BASTypes) -> bool:
-        return self.type == bastype or self.type == BASTypes.NONE
+        return self.restype == bastype
 
-    def check_op(self, op: str) -> bool:
-        if self.type == BASTypes.STR:
-            # permited operators with strings
-            return op in  ['+']
-        # numeric types supports all operators
-        return True
-
-    def pushval(self, symbol: Token, bastype: BASTypes) -> bool:
-        self.expr.append(symbol)
-        if not self.check_types(bastype):
-            return False
-        self.type = bastype
-        return True
+    def pushval(self, symbol: Token, bastype: BASTypes) -> None:
+        if self.restype == BASTypes.NONE:
+            self.restype = bastype
+        self.expr.append((symbol, bastype))
     
     def pushop(self, symbol: Token) -> bool:
-        self.expr.append(symbol)
-        # Logic operators change type to integer as their result is TRUE or FALSE
-        if symbol.text in ['=', '>', '<', '<>', '>=', '<=']:
-            self.type = BASTypes.INT
-        return self.check_op(symbol.text)
+        if symbol.text == 'NEG':
+            # work only for real and integers
+            if self.expr[-1][1] == BASTypes.INT or self.expr[-1][1] == BASTypes.REAL:
+                self.expr.append((symbol, self.expr[-1][1]))
+                return self.check_types(self.expr[-1][1])
+        elif symbol.text in ['=', '>', '<', '<>', '>=', '<=']:
+            # Logic operators change result type to integer. They work for all
+            # kind of factors but both of them must be of the same type
+            if self.expr[-1][1] == self.expr[-2][1]:
+                self.restype = BASTypes.INT    # FALSE = 0 TRUE <> 0
+                self.expr.append((symbol, BASTypes.INT))
+                return self.check_types(BASTypes.INT)
+        elif symbol.text == '+':
+            # + works for all types, even strings (concat) but both factors must
+            # be of the same type
+            if self.expr[-1][1] == self.expr[-2][1]:
+                self.expr.append((symbol, self.expr[-1][1]))
+                return self.check_types(self.expr[-1][1])
+        else:
+            # numeric operation that only works for real and integer factors
+            if self.expr[-1][1] == self.expr[-2][1]:
+                if self.expr[-1][1] == BASTypes.INT or self.expr[-1][1] == BASTypes.REAL:
+                    self.expr.append((symbol, self.expr[-1][1]))
+                    return self.check_types(self.expr[-1][1])
+        return False
 
     def __str__(self) -> str:
         text = "["
-        for token in self.expr:
-            text = text + f"({token.text})"
-        text = text + f"] of type {str(self.type)}"
+        for token, type in self.expr:
+            text = text + f"({token.text},{type})"
         return text
     
     @staticmethod
@@ -427,7 +437,7 @@ class Symbol:
     def __init__(self, sname: str, stype: SymTypes) -> None:
         self.symbol = sname
         self.symtype = stype
-        self.value: List[Token] = []
+        self.value: List[Tuple[Token,BASTypes]] = []
         self.valtype = BASTypes.NONE
         self.temporal = False
         self.puts = 0
@@ -435,7 +445,7 @@ class Symbol:
     
     def set_value(self, expr: Expression):
         self.value = expr.expr
-        self.valtype = expr.type
+        self.valtype = expr.restype
         self.inc_writes()
     
     def is_ident(self) -> bool:
@@ -459,7 +469,7 @@ class Symbol:
         self.puts = self.puts + 1
 
     def check_types(self, bastype: BASTypes) -> bool:
-        return self.valtype == bastype or self.valtype == BASTypes.NONE
+        return self.valtype == bastype
 
     def print(self) -> None:
         print(self.symbol + ' -', self.symtype, ':', self.valtype, self.value)
