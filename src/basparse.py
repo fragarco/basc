@@ -112,6 +112,7 @@ class BASParser:
         entry = self.symbols.search(symname)
         if entry is None:
             entry = self.symbols.add(symname, SymTypes.SYMVAR)
+            print("AAA", entry, symname)
             # force type if it is included in variable name so
             # check_types will ensure it matches with expression type
             entry.valtype = forcedtype
@@ -327,19 +328,15 @@ class BASParser:
         """ <command_MODE> := MODE <arg_int> """
         assert self.cur_token is not None
         self.next_token()
-        self.push_curexpr()
         self.arg_int()
         self.emitter.rtcall('MODE', [self.cur_expr])      
-        self.pop_curexpr()
 
     def command_PRINT(self) -> None:
         """ <command_PRINT> := PRINT <arg_str> """
         assert self.cur_token is not None
         self.next_token()
-        self.push_curexpr()
         self.arg_str()
         self.emitter.rtcall('PRINT', [self.cur_expr])      
-        self.pop_curexpr()
 
     def command_THEN(self) -> None:
         assert self.cur_token is not None
@@ -366,7 +363,7 @@ class BASParser:
         self.expression()
         if self.cur_expr.is_empty():
             self.error(line, ErrorCode.SYNTAX)
-        if not self.cur_expr.is_int_result():
+        elif not self.cur_expr.is_int_result():
             self.error(line, ErrorCode.TYPE)
 
     def arg_real(self) -> None:
@@ -376,7 +373,7 @@ class BASParser:
         self.expression()
         if self.cur_expr.is_empty():
             self.error(line, ErrorCode.SYNTAX)
-        if not self.cur_expr.is_real_result():
+        elif not self.cur_expr.is_real_result():
             self.error(line, ErrorCode.TYPE)
 
     def arg_str(self) -> None:
@@ -386,7 +383,8 @@ class BASParser:
         self.expression()
         if self.cur_expr.is_empty():
             self.error(line, ErrorCode.SYNTAX)
-        if not self.cur_expr.is_str_result():
+        elif not self.cur_expr.is_str_result():
+            print("BBB")
             self.error(line, ErrorCode.TYPE)
 
     # Expression rules

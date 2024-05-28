@@ -403,6 +403,7 @@ class Expression:
         text = "["
         for (token, type) in self.expr:
             text = text + f"({token.text},{type})"
+        text = text + "]"
         return text
     
     @staticmethod
