@@ -472,7 +472,7 @@ class Symbol:
         self.puts = self.puts + 1
 
     def check_types(self, bastype: BASTypes) -> bool:
-        return self.valtype == bastype
+        return self.valtype == BASTypes.NONE or self.valtype == bastype
 
     def print(self) -> None:
         print(self.symbol + ' -', self.symtype, ':', self.valtype, self.value)

@@ -112,7 +112,6 @@ class BASParser:
         entry = self.symbols.search(symname)
         if entry is None:
             entry = self.symbols.add(symname, SymTypes.SYMVAR)
-            print("AAA", entry, symname)
             # force type if it is included in variable name so
             # check_types will ensure it matches with expression type
             entry.valtype = forcedtype
@@ -382,9 +381,9 @@ class BASParser:
         line = self.cur_token.srcline
         self.expression()
         if self.cur_expr.is_empty():
+            print("AAA")
             self.error(line, ErrorCode.SYNTAX)
         elif not self.cur_expr.is_str_result():
-            print("BBB")
             self.error(line, ErrorCode.TYPE)
 
     # Expression rules

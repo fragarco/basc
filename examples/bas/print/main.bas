@@ -8,16 +8,16 @@ mainloop:
     a$=INKEY$
     IF a$="" THEN mainloop
     print a$
-    IF a$="y" OR a$="Y" THEN endyes
-    IF a$="N" OR a$="n" THEN endno
-    GOTO mainloop
+''    IF a$="y" OR a$="Y" THEN endyes
+''    IF a$="N" OR a$="n" THEN endno
+''    GOTO mainloop
 
-endyes:
-    PRINT "You have selected YES"
-    END
+'endyes:
+''    PRINT "You have selected YES"
+''    END
 
-endno:
-    PRINT "You have selected NO"
-    END
+'endno:
+''    PRINT "You have selected NO"
+''    END
 
 
