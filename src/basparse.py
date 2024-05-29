@@ -406,6 +406,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.or_term()
+            print("AAA", self.cur_expr)
             if not self.cur_expr.pushop(op):
                 self.error(op.srcline, ErrorCode.TYPE)
 
