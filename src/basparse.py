@@ -381,7 +381,6 @@ class BASParser:
         line = self.cur_token.srcline
         self.expression()
         if self.cur_expr.is_empty():
-            print("AAA")
             self.error(line, ErrorCode.SYNTAX)
         elif not self.cur_expr.is_str_result():
             self.error(line, ErrorCode.TYPE)
@@ -442,6 +441,7 @@ class BASParser:
             self.next_token()
             self.compare_term()
             if not self.cur_expr.pushop(op):
+                print("AAA", self.cur_expr)
                 self.error(op.srcline, ErrorCode.TYPE)
 
     def add_term(self) -> None:

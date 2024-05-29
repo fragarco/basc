@@ -303,7 +303,7 @@ class Token:
 
     def is_logic_op(self) -> bool:
         # Check if the token is in the list of logical operations.
-        return self.text in ['=','<>','>','<','>=','<=','AND','OR','XOR']
+        return self.text in ['=','<>','>','<','>=','<=']
 
     def is_ident(self) -> bool:
         # Check if the token is an identifier
