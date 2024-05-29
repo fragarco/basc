@@ -378,7 +378,7 @@ class Expression:
             if self.expr[-1][1] == BASTypes.INT or self.expr[-1][1] == BASTypes.REAL:
                 self.expr.append((symbol, self.expr[-1][1]))
                 return self.check_types(self.expr[-1][1])
-        elif symbol.text in ['=', '>', '<', '<>', '>=', '<=']:
+        elif symbol.text in ['=', '>', '<', '<>', '>=', '<=', 'OR', 'AND']:
             # Logic operators change result type to integer. They work for all
             # kind of factors but both of them must be of the same type
             if self.expr[-1][1] == self.expr[-2][1]:
@@ -397,7 +397,7 @@ class Expression:
                 if self.expr[-1][1] == BASTypes.INT or self.expr[-1][1] == BASTypes.REAL:
                     self.expr.append((symbol, self.expr[-1][1]))
                     return self.check_types(self.expr[-1][1])
-        return False
+        return True # AAA FIX THIS!
 
     def __str__(self) -> str:
         text = "["

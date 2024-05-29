@@ -402,11 +402,10 @@ class BASParser:
         """<or_term> ::= <and_term> [OR <or_term>]"""
         assert self.cur_token is not None
         self.and_term()
-        if self.match_current(TokenType.AND):
+        if self.match_current(TokenType.OR):
             op = self.cur_token
             self.next_token()
             self.or_term()
-            print("AAA", self.cur_expr)
             if not self.cur_expr.pushop(op):
                 self.error(op.srcline, ErrorCode.TYPE)
 
