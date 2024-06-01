@@ -373,31 +373,15 @@ class Expression:
         self.expr.append((symbol, bastype))
     
     def pushop(self, symbol: Token) -> bool:
-        if symbol.text == 'NEG':
-            # work only for real and integers
-            if self.expr[-1][1] == BASTypes.INT or self.expr[-1][1] == BASTypes.REAL:
-                self.expr.append((symbol, self.expr[-1][1]))
-                return self.check_types(self.expr[-1][1])
-        elif symbol.text in ['=', '>', '<', '<>', '>=', '<=', 'OR', 'AND']:
-            # Logic operators change result type to integer. They work for all
-            # kind of factors but both of them must be of the same type
-            if self.expr[-1][1] == self.expr[-2][1]:
-                self.restype = BASTypes.INT    # FALSE = 0 TRUE <> 0
-                self.expr.append((symbol, BASTypes.INT))
-                return self.check_types(BASTypes.INT)
-        elif symbol.text == '+':
-            # + works for all types, even strings (concat) but both factors must
-            # be of the same type
-            if self.expr[-1][1] == self.expr[-2][1]:
-                self.expr.append((symbol, self.expr[-1][1]))
-                return self.check_types(self.expr[-1][1])
-        else:
-            # numeric operation that only works for real and integer factors
-            if self.expr[-1][1] == self.expr[-2][1]:
-                if self.expr[-1][1] == BASTypes.INT or self.expr[-1][1] == BASTypes.REAL:
-                    self.expr.append((symbol, self.expr[-1][1]))
-                    return self.check_types(self.expr[-1][1])
-        return True # AAA FIX THIS!
+        # operators are added without type because checktypes will do it
+        # after the expression is parsed to calculate it correctly
+        self.expr.append((symbol, BASTypes.NONE))
+
+    def checktypes(self) -> bool:
+        typestack = []
+        for (token,bastype) in self.expr:
+            print("AAA", token, bastype)
+        return True
 
     def __str__(self) -> str:
         text = "["

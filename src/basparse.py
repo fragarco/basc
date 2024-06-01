@@ -395,8 +395,9 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.expression()
-            if not self.cur_expr.pushop(op):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
+        if not self.cur_expr.checktypes():
+           self.error(op.srcline, ErrorCode.TYPE)
 
     def or_term(self) -> None:
         """<or_term> ::= <and_term> [OR <or_term>]"""
@@ -406,8 +407,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.or_term()
-            if not self.cur_expr.pushop(op):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
 
     def and_term(self) -> None:
         """<and_term> ::= <not_term> [AND <and_term>]"""
@@ -417,8 +417,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.and_term()
-            if not self.cur_expr.pushop(op):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
 
     def not_term(self) -> None:
         """<not_term> ::= [NOT] <compare_term>"""
@@ -427,8 +426,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.compare_term()
-            if not self.cur_expr.pushop(op):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
         else:
             self.compare_term()
 
@@ -440,9 +438,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.compare_term()
-            if not self.cur_expr.pushop(op):
-                print("AAA", self.cur_expr)
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
 
     def add_term(self) -> None:
         """<add_term> ::= <mod_term> [('+'|'-') <add_term>]"""
@@ -452,8 +448,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.add_term()
-            if not self.cur_expr.pushop(op):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
 
     def mod_term(self) -> None:
         """<mod_term> ::= <mult_term> [MOD <mod_term>]"""
@@ -463,8 +458,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.mod_term()
-            if not self.cur_expr.pushop(op):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
 
     def mult_term(self) -> None:
         """<mult_term> ::= <negate_term> [('*'|'/'|'\\' <mult_term>] """
@@ -474,8 +468,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.mult_term()
-            if not self.cur_expr.pushop(op):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(op)
 
     def negate_term(self) -> None:
         """<negate_term> ::= ['-'] <sub_term> """
@@ -484,8 +477,7 @@ class BASParser:
             op = self.cur_token
             self.next_token()
             self.sub_term()
-            if not self.cur_expr.pushop(Token('NEG', TokenType.NEG, op.srcline)):
-                self.error(op.srcline, ErrorCode.TYPE)
+            self.cur_expr.pushop(Token('NEG', TokenType.NEG, op.srcline))
         else:
             self.sub_term()
 
