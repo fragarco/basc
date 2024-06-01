@@ -390,6 +390,7 @@ class BASParser:
     def expression(self) -> None:
         """ <expression> ::= <or_term> [XOR <expression>] """
         assert self.cur_token is not None
+        line = self.cur_token.srcline
         self.or_term()
         if self.match_current(TokenType.XOR):
             op = self.cur_token
@@ -397,7 +398,7 @@ class BASParser:
             self.expression()
             self.cur_expr.pushop(op)
         if not self.cur_expr.check_types():
-           self.error(op.srcline, ErrorCode.TYPE)
+           self.error(line, ErrorCode.TYPE)
 
     def or_term(self) -> None:
         """<or_term> ::= <and_term> [OR <or_term>]"""

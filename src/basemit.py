@@ -174,7 +174,8 @@ class SMEmitter:
                 elif type == BASTypes.REAL:self.operate_real(token.text)
                 elif type == BASTypes.STR: self.operate_str(token.text)
                 else:
-                    self.abort("Expression has not a valid type (integer, real, string)")
+                    # Expression is bad formed due to errors and operant is still BASTypes.NONE
+                    self._emit(SMI.NOP)
     
     def logical_expr(self, expr: Expression, jumplabel: str) -> None:
         self.expression(expr)

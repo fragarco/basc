@@ -429,7 +429,7 @@ class Expression:
                     bastype = BASTypes.INT
 
             typestack.append(bastype)
-        
+
         if len(typestack) == 1:
             self.restype = typestack[0]
             return True
