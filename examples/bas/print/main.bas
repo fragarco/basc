@@ -7,17 +7,17 @@ PRINT "Select Yes or No (Y/N)?"
 mainloop:
     a$=INKEY$
     IF a$="" THEN mainloop
-    print a$
     IF a$="y" OR a$="Y" THEN endyes
     IF a$="N" OR a$="n" THEN endno
+    print a$
     GOTO mainloop
 
 endyes:
     PRINT "You have selected YES"
-    END
+    GOTO mainloop
 
 endno:
     PRINT "You have selected NO"
-    END
+    GOTO mainloop
 
 

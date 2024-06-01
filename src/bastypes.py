@@ -321,7 +321,7 @@ class Token:
         # Check if the token is a string literal
         return self.type == TokenType.REAL
 
-    def __str__(self) -> None:
+    def __str__(self) -> str:
         return f"({self.text},{self.type},{self.srcline})"
 
 class BASTypes(enum.Enum):
@@ -364,7 +364,7 @@ class Expression:
     def is_none_result(self) -> bool:
         return self.restype.value == BASTypes.NONE.value
     
-    def check_types(self, bastype: BASTypes) -> bool:
+    def is_compatible(self, bastype: BASTypes) -> bool:
         return self.restype == bastype
 
     def pushval(self, symbol: Token, bastype: BASTypes) -> None:
@@ -372,16 +372,68 @@ class Expression:
             self.restype = bastype
         self.expr.append((symbol, bastype))
     
-    def pushop(self, symbol: Token) -> bool:
+    def pushop(self, symbol: Token) -> None:
         # operators are added without type because checktypes will do it
         # after the expression is parsed to calculate it correctly
         self.expr.append((symbol, BASTypes.NONE))
 
-    def checktypes(self) -> bool:
-        typestack = []
-        for (token,bastype) in self.expr:
-            print("AAA", token, bastype)
-        return True
+    def check_types(self) -> bool:
+        typestack: List[BASTypes] = []
+        for i, (token,bastype) in enumerate(self.expr):
+            if token.type not in [TokenType.INTEGER, TokenType.REAL, TokenType.STRING, TokenType.IDENT]:
+                if token.text in ['-','*','/','\\','%']:
+                    # operants over numeric types (integers or reals)
+                    top1 = typestack[-1]
+                    top2 = typestack[-2]
+                    if top1 != top2 or top1 == BASTypes.STR:
+                        return False
+                    self.expr[i] = (token, top1)
+                    typestack = typestack[:-2]
+                    bastype = top1
+                elif token.text == '+':
+                    # supports strings too as it means concat
+                    top1 = typestack[-1]
+                    top2 = typestack[-2]
+                    if top1 != top2:
+                        return False
+                    self.expr[i] = (token, top1)
+                    typestack = typestack[:-2]
+                    bastype = top1
+                elif token.text in ['=','>','<','<>','>=','<=','AND','OR']:
+                    # logic operations support strings, reals and integers but
+                    # the result is always integer (boolean) so we store the
+                    # type of the operands but stack INT for the test purposes
+                    top1 = typestack[-1]
+                    top2 = typestack[-2]
+                    if top1 != top2:
+                        return False
+                    self.expr[i] = (token, top1)
+                    typestack = typestack[:-2]
+                    bastype = BASTypes.INT
+                elif token.text == 'XOR':
+                    # this works only with integers
+                    top1 = typestack[-1]
+                    top2 = typestack[-2]
+                    if top1 != top2 or top1 != BASTypes.INT:
+                        return False
+                    self.expr[i] = (token, BASTypes.INT)
+                    typestack = typestack[:-2]
+                    bastype = BASTypes.INT
+                else:
+                    # This is one factor operation like NEG, works only with integers
+                    top1 = typestack[-1]
+                    if top1 != BASTypes.INT:
+                        return False
+                    self.expr[i] = (token, BASTypes.INT)
+                    typestack = typestack[:-1]
+                    bastype = BASTypes.INT
+
+            typestack.append(bastype)
+        
+        if len(typestack) == 1:
+            self.restype = typestack[0]
+            return True
+        return False
 
     def __str__(self) -> str:
         text = "["
@@ -455,7 +507,7 @@ class Symbol:
         """ To control the number of times the symbol value is changed """
         self.puts = self.puts + 1
 
-    def check_types(self, bastype: BASTypes) -> bool:
+    def is_compatible(self, bastype: BASTypes) -> bool:
         return self.valtype == BASTypes.NONE or self.valtype == bastype
 
     def print(self) -> None:

@@ -113,9 +113,9 @@ class BASParser:
         if entry is None:
             entry = self.symbols.add(symname, SymTypes.SYMVAR)
             # force type if it is included in variable name so
-            # check_types will ensure it matches with expression type
+            # is_compatible will ensure it matches with expression type
             entry.valtype = forcedtype
-        if entry.check_types(expr.restype):
+        if entry.is_compatible(expr.restype):
             entry.set_value(expr)
             return entry
         else:
@@ -396,7 +396,7 @@ class BASParser:
             self.next_token()
             self.expression()
             self.cur_expr.pushop(op)
-        if not self.cur_expr.checktypes():
+        if not self.cur_expr.check_types():
            self.error(op.srcline, ErrorCode.TYPE)
 
     def or_term(self) -> None:
