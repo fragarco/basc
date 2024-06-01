@@ -397,8 +397,12 @@ class BASParser:
             self.next_token()
             self.expression()
             self.cur_expr.pushop(op)
-        if not self.cur_expr.check_types():
-           self.error(line, ErrorCode.TYPE)
+        try:
+            if not self.cur_expr.check_types():
+                self.error(line, ErrorCode.TYPE)
+        except Exception:
+            # bad formed expression
+            self.error(line, ErrorCode.SYNTAX)
 
     def or_term(self) -> None:
         """<or_term> ::= <and_term> [OR <or_term>]"""
