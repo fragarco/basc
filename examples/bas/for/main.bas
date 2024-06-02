@@ -16,3 +16,6 @@ FOR i=1 to 10
 NEXT i
 PRINT s
 
+loop:
+    goto loop
+

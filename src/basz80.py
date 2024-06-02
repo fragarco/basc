@@ -142,6 +142,9 @@ class Z80Backend:
         self._addcode(f"\tcall    {FWCALL.TXT_STR_SELECT} ;TXT_STR_SELECT")
         self._addcode(f"\tcall    {FWCALL.TXT_CLEAR_WINDOW} ;TXT_CLEAR_WINDOW")
 
+    def rtcall_END(self) -> None:
+        self._addcode("\tjp      0  ; reset")
+
     def rtcall_INKEYS(self) -> None:
         self._addcode(f"\tcall    {FWCALL.KM_READ_CHAR} ;KM_READ_CHAR")
         self._addcode("\tjr      c,@+3  ; if not character then A=0")
