@@ -391,11 +391,21 @@ class BASParser:
                     self.next_token()
 
     def command_PRINT(self) -> None:
-        """ <command_PRINT> := PRINT <arg_str> """
+        """ <command_PRINT> := PRINT <expression> [;]"""
         assert self.cur_token is not None
+        line = self.cur_token.srcline
         self.next_token()
-        self.arg_str()
-        self.emitter.rtcall('PRINT', [self.cur_expr])      
+        self.expression()
+        if self.cur_expr.is_str_result():
+            self.emitter.rtcall('PRINT', [self.cur_expr])
+        elif self.cur_expr.is_int_result():
+            self.emitter.rtcall('PRINT_INT', [self.cur_expr])
+        elif self.cur_expr.is_real_result():
+            self.emitter.rtcall('PRINT_REAL', [self.cur_expr])
+        else:
+            self.error(line, ErrorCode.SYNTAX)
+        if not self.match_current(TokenType.SEMICOLON):
+            self.emitter.rtcall('PRINT_LN')
 
     def command_THEN(self) -> None:
         assert self.cur_token is not None

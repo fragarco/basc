@@ -156,11 +156,19 @@ class Z80Backend:
         self._addcode("\tpop     af")
 
     def rtcall_PRINT(self) -> None:
-        self._addlibfunc(STRLIB, "strlib_print_nl")
         self._addlibfunc(STRLIB, "strlib_print_str")
         self._addcode("\tcall    strlib_print_str")
+
+    def rtcall_PRINT_NL(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_print_nl")
         self._addcode("\tcall    strlib_print_nl")
 
+    def rtcall_PRINT_INT(self) -> None:
+        self.abort("PRINT does not support INT expressions yet")
+
+    def rtcall_PRINT_REAL(self) -> None:
+        self.abort("PRINT does not support REAL expressions yet")
+    
     def rtcall_STRCOMP(self) -> None:
         self._addlibfunc(STRLIB, "strlib_comp")
         self._addcode("\tpop     de")
