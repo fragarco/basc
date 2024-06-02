@@ -44,7 +44,7 @@ class BASParser:
         self.cur_expr = Expression()
         self.expr_stack: List[Expression] = []
         # start, limit, step, looplabel, endlabel
-        self.for_stack: List[Tuple[Symbol, Symbol, Optional[Symbol], Symbol, Symbol]] = []
+        self.for_stack: List[Tuple[Symbol, Symbol, Optional[Expression], Symbol, Symbol]] = []
         self.temp_vars: int = 0
 
     def abort(self, message: str) -> None:
@@ -297,11 +297,22 @@ class BASParser:
                     step = None
                     if self.cur_token.text.upper() == 'STEP':
                         self.next_token()
-                        self.arg_int()
-                        step = self.symtab_newtmpvar(self.cur_token.srcline, self.cur_expr)
-                        assert step is not None
-                        self.emitter.assign(step.symbol, self.cur_expr)
-                        self.reset_curexpr()
+                        step = Expression()
+                        reverse = False
+                        if self.match_current(TokenType.MINUS):
+                            self.next_token()
+                            reverse = True
+                        if self.match_current(TokenType.INTEGER):
+                            step.pushval(self.cur_token, BASTypes.INT)
+                            if reverse:
+                               step.pushop(Token('NEG', TokenType.NEG, symbol.srcline))
+                            self.next_token()
+                            if not step.check_types():
+                                self.error(symbol.srcline, ErrorCode.TYPE)
+                                return
+                        else:
+                            self.error(symbol.srcline, ErrorCode.SYNTAX)
+                            return
                     startlabel = self.symtab_newtmplabel(self.cur_token.srcline)
                     endlabel = self.symtab_newtmplabel(self.cur_token.srcline)
                     assert startlabel is not None and endlabel is not None

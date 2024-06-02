@@ -7,7 +7,6 @@
 ' speed improvements at all.
 
 CLS
-s = 0
 FOR i=1 to 10
     FOR j=1 to 1000
         s = 1000 + j

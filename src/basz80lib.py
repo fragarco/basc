@@ -126,7 +126,7 @@ SM2Z80 = {
         ],
     'FORDOWN': [
         "pop     de",
-        "ex      de,hl"
+        "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
         "jp      c,$ARG1"
