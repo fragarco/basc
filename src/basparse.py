@@ -404,7 +404,10 @@ class BASParser:
             self.emitter.rtcall('PRINT_REAL', [self.cur_expr])
         else:
             self.error(line, ErrorCode.SYNTAX)
-        if not self.match_current(TokenType.SEMICOLON):
+            return
+        if self.match_current(TokenType.SEMICOLON):
+            self.next_token()
+        else:
             self.emitter.rtcall('PRINT_LN')
 
     def command_THEN(self) -> None:

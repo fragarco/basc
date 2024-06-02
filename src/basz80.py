@@ -159,7 +159,7 @@ class Z80Backend:
         self._addlibfunc(STRLIB, "strlib_print_str")
         self._addcode("\tcall    strlib_print_str")
 
-    def rtcall_PRINT_NL(self) -> None:
+    def rtcall_PRINT_LN(self) -> None:
         self._addlibfunc(STRLIB, "strlib_print_nl")
         self._addcode("\tcall    strlib_print_nl")
 

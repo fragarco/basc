@@ -7,7 +7,14 @@
 ' speed improvements at all.
 
 s = 0
-print s
+print "1"
+print "2"
+print "3";
+print "4";
+print "hola"
+print "adios"
+loop:
+    goto loop
 'CLS
 'FOR i=1 to 10
 ''    s = 0
