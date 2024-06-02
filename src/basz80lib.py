@@ -67,6 +67,7 @@ SM2Z80 = {
         "jrnz    @+3",
         "inc     (ix+H)"
         ],
+    'INC': ["inc     hl"],
     'INCR': [
         "ld      de,$ARG1",
         "add     hl,de"
@@ -119,16 +120,16 @@ SM2Z80 = {
         ],
     'FOR': [
         "pop     de",
-        "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "jp      p,$ARG1"
+        "jp      c,$ARG1"
         ],
     'FORDOWN': [
         "pop     de",
+        "ex      de,hl"
         "xor     a",
         "sbc     hl,de",
-        "jp      p,$ARG1"
+        "jp      c,$ARG1"
         ],
     'MKFRAME': [
         "push    ix",

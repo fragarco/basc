@@ -306,7 +306,7 @@ class BASParser:
                     endlabel = self.symtab_newtmplabel(self.cur_token.srcline)
                     assert startlabel is not None and endlabel is not None
                     self.for_stack.append((variant, limit, step, startlabel, endlabel))
-                    self.emitter.forloop(variant, limit, step, startlabel)
+                    self.emitter.forloop(variant, limit, step, startlabel, endlabel)
                     return
             self.error(symbol.srcline, ErrorCode.SYNTAX)
         else:
@@ -381,6 +381,7 @@ class BASParser:
             self.error(self.cur_token.srcline, ErrorCode.NEXT)
         else:
             start, limit, step, looplabel, endlabel = self.for_stack.pop()
+            self.emitter.next(start, limit, step, looplabel, endlabel)
             if self.match_current(TokenType.IDENT):
                 assert self.cur_token is not None
                 entry = self.symtab_search(self.cur_token.text)

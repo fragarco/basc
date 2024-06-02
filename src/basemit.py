@@ -36,6 +36,7 @@ class SMI:
     STINDB  = 'STINDB'
     INCGLOB = 'INCGLOB'
     INCLOCL = 'INCLOCL'
+    INC     = 'INC'
     INCR    = 'INCR'
     STACK   = 'STACK'
     UNSTACK = 'UNSTACK'
@@ -192,9 +193,25 @@ class SMEmitter:
         else:
             self.store(variable_name)
 
-    def forloop(self, variant: Symbol, limit: Symbol, step: Optional[Symbol], looplabel: Symbol) -> None:
-        print("AAA emit forloop")
+    def forloop(self, variant: Symbol, limit: Symbol, step: Optional[Symbol], looplabel: Symbol, endlabel: Symbol) -> None:
+        self.label(looplabel.symbol)
+        self.load_symbol(variant.symbol)
+        self._emit(SMI.PUSH)
+        self.load_symbol(limit.symbol)
+        self._emit(SMI.FOR, endlabel.symbol)
 
+    def next(self, variant: Symbol, limit: Symbol, step: Optional[Symbol], looplabel: Symbol, endlabel: Symbol) -> None:
+        self.load_symbol(variant.symbol)
+        if step is None:
+            self._emit(SMI.INC)
+        else:
+            self._emit(SMI.PUSH)
+            self.load_symbol(step.symbol)
+            self._emit(SMI.ADD)
+        self.store(variant.symbol)
+        self._emit(SMI.JUMP, looplabel.symbol)
+        self.label(endlabel.symbol)
+    
     def goto(self, label: str) -> None:
         self._emit(SMI.JUMP, label)
 

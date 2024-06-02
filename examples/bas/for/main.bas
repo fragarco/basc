@@ -7,14 +7,14 @@
 ' speed improvements at all.
 
 CLS
+s = 0
 FOR i=1 to 10
-    s = 0
-''    FOR j=1 to 1000
-''        s=1000+j
-''    NEXT j
-''    PRINT "."
+    FOR j=1 to 1000
+        s = 1000 + j
+    NEXT j
+    PRINT ".";
 NEXT i
-PRINT s
+PRINT " END!"
 
 loop:
     goto loop
