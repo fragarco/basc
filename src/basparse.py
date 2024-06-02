@@ -43,6 +43,8 @@ class BASParser:
         self.symbols = SymbolTable()
         self.cur_expr = Expression()
         self.expr_stack: List[Expression] = []
+        # start, limit, step, looplabel, endlabel
+        self.for_stack: List[Tuple[Symbol, Symbol, Optional[Symbol], Symbol, Symbol]] = []
         self.temp_vars: int = 0
 
     def abort(self, message: str) -> None:
@@ -149,7 +151,7 @@ class BASParser:
     def pop_curexpr(self) -> None:
         if len(self.expr_stack) > 0:
             self.cur_expr = self.expr_stack[-1]
-            self.expr_stack = self.expr_stack[:-1]
+            self.expr_stack.pop()
         else:
             self.abort("internal error processing expressions")
 
@@ -163,6 +165,8 @@ class BASParser:
         self.temp_vars = 0
         self.errors = 0
         self.lines()
+        if len(self.for_stack) != 0:
+            self.abort(ErrorCode.NONEXT)
         if self.errors:
             print(self.errors, "error(s) in total")
             sys.exit(1)
@@ -269,6 +273,45 @@ class BASParser:
         self.emitter.end()
         self.next_token()
 
+    def command_FOR(self) -> None:
+        """ <command_FOR> := FOR IDENT=<arg_int> TO <arg_int> [STEP [-]NUMBER] """
+        assert self.cur_token is not None
+        self.next_token()
+        if self.match_current(TokenType.IDENT):
+            symbol = self.cur_token
+            self.next_token()
+            if self.match_current(TokenType.EQ):
+                self.next_token()
+                self.arg_int()
+                variant = self.symtab_addident(symbol.text, symbol.srcline, self.cur_expr)
+                assert variant is not None
+                self.emitter.assign(variant.symbol, self.cur_expr)
+                self.reset_curexpr()
+                if self.cur_token.text.upper() == 'TO':
+                    self.next_token()
+                    self.arg_int()
+                    limit = self.symtab_newtmpvar(self.cur_token.srcline, self.cur_expr)
+                    assert limit is not None
+                    self.emitter.assign(limit.symbol, self.cur_expr)
+                    self.reset_curexpr()
+                    step = None
+                    if self.cur_token.text.upper() == 'STEP':
+                        self.next_token()
+                        self.arg_int()
+                        step = self.symtab_newtmpvar(self.cur_token.srcline, self.cur_expr)
+                        assert step is not None
+                        self.emitter.assign(step.symbol, self.cur_expr)
+                        self.reset_curexpr()
+                    startlabel = self.symtab_newtmplabel(self.cur_token.srcline)
+                    endlabel = self.symtab_newtmplabel(self.cur_token.srcline)
+                    assert startlabel is not None and endlabel is not None
+                    self.for_stack.append((variant, limit, step, startlabel, endlabel))
+                    self.emitter.forloop(variant, limit, step, startlabel)
+                    return
+            self.error(symbol.srcline, ErrorCode.SYNTAX)
+        else:
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+
     def command_IF(self) -> None:
         """ <command_IF> := IF <expression> (THEN|GOTO) (LABEL | NUMBER | <statements>) [ELSE (LABEL| NUMBER | <statements>)] NEWLINE"""
         assert self.cur_token is not None
@@ -329,6 +372,24 @@ class BASParser:
         self.next_token()
         self.arg_int()
         self.emitter.rtcall('MODE', [self.cur_expr])      
+
+    def command_NEXT(self) -> None:
+        """ <command_NEXT> := NEXT [IDENT] """
+        self.next_token()
+        if len(self.for_stack) == 0:
+            assert self.cur_token is not None
+            self.error(self.cur_token.srcline, ErrorCode.NEXT)
+        else:
+            start, limit, step, looplabel, endlabel = self.for_stack.pop()
+            if self.match_current(TokenType.IDENT):
+                assert self.cur_token is not None
+                entry = self.symtab_search(self.cur_token.text)
+                if not entry or entry.symbol != start.symbol:
+                    self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+                    return
+                else:
+                    self.next_token()
+            print("AAA emit", start.symbol, limit.symbol, step, looplabel, endlabel)
 
     def command_PRINT(self) -> None:
         """ <command_PRINT> := PRINT <arg_str> """

@@ -191,6 +191,9 @@ class SMEmitter:
         else:
             self.store(variable_name)
 
+    def forloop(self, variant: Symbol, limit: Symbol, step: Optional[Symbol], looplabel: Symbol) -> None:
+        print("AAA emit forloop")
+
     def goto(self, label: str) -> None:
         self._emit(SMI.JUMP, label)
 

@@ -14,5 +14,5 @@ FOR i=1 to 10
     NEXT j
     PRINT ".";
 NEXT i
-PRINT s
+PRINT "s"
 

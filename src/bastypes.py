@@ -381,51 +381,42 @@ class Expression:
         typestack: List[BASTypes] = []
         for i, (token,bastype) in enumerate(self.expr):
             if token.type not in [TokenType.INTEGER, TokenType.REAL, TokenType.STRING, TokenType.IDENT]:
+                top1 = typestack.pop()
                 if token.text in ['-','*','/','\\','%']:
                     # operants over numeric types (integers or reals)
-                    top1 = typestack[-1]
-                    top2 = typestack[-2]
+                    top2 = typestack.pop()
                     if top1 != top2 or top1 == BASTypes.STR:
                         return False
                     self.expr[i] = (token, top1)
-                    typestack = typestack[:-2]
                     bastype = top1
                 elif token.text == '+':
                     # supports strings too as it means concat
-                    top1 = typestack[-1]
-                    top2 = typestack[-2]
+                    top2 = typestack.pop()
                     if top1 != top2:
                         return False
                     self.expr[i] = (token, top1)
-                    typestack = typestack[:-2]
                     bastype = top1
                 elif token.text in ['=','>','<','<>','>=','<=','AND','OR']:
                     # logic operations support strings, reals and integers but
                     # the result is always integer (boolean) so we store the
                     # type of the operands but stack INT for the test purposes
-                    top1 = typestack[-1]
-                    top2 = typestack[-2]
+                    top2 = typestack.pop()
                     if top1 != top2:
                         return False
                     self.expr[i] = (token, top1)
-                    typestack = typestack[:-2]
                     bastype = BASTypes.INT
                 elif token.text == 'XOR':
                     # this works only with integers
-                    top1 = typestack[-1]
-                    top2 = typestack[-2]
+                    top2 = typestack.pop()
                     if top1 != top2 or top1 != BASTypes.INT:
                         return False
                     self.expr[i] = (token, BASTypes.INT)
-                    typestack = typestack[:-2]
                     bastype = BASTypes.INT
                 else:
                     # This is one factor operation like NEG, works only with integers
-                    top1 = typestack[-1]
                     if top1 != BASTypes.INT:
                         return False
                     self.expr[i] = (token, BASTypes.INT)
-                    typestack = typestack[:-1]
                     bastype = BASTypes.INT
 
             typestack.append(bastype)
