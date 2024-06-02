@@ -12,7 +12,7 @@ FOR i=1 to 10
     FOR j=1 to 1000
         s=1000+j
     NEXT j
-    PRINT ".";
+    PRINT "."
 NEXT i
 PRINT "s"
 

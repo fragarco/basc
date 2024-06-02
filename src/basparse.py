@@ -389,7 +389,6 @@ class BASParser:
                     return
                 else:
                     self.next_token()
-            print("AAA emit", start.symbol, limit.symbol, step, looplabel, endlabel)
 
     def command_PRINT(self) -> None:
         """ <command_PRINT> := PRINT <arg_str> """
