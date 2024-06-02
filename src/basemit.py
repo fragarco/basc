@@ -144,6 +144,7 @@ class SMEmitter:
         elif op == '>': self._emit(SMI.GT)
         elif op == '>=': self._emit(SMI.GE)
         elif op == '<=': self._emit(SMI.LE)
+        elif op == 'NEG': self._emit(SMI.NEG)
         else:
             self.abort(f"Operation {op} is not currently supported with integers")
     

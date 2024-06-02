@@ -128,11 +128,13 @@ class Z80Backend:
     def _addcode(self, line: str) -> None:
         self.code.append(line + '\n')
 
-    def _addlibfunc(self, lib: Any, fname: str) -> None:
+    def _addlibfunc(self, lib: Any, fname: str) -> bool:
         if fname not in self.libs:
             self.libs.append(fname)
             fcode: List[str] = lib[fname]
             self.libcode = self.libcode + fcode
+            return True
+        return False
 
     def rtcall_CLS(self) -> None:
         self._addcode("\tld      a,l")
@@ -164,7 +166,11 @@ class Z80Backend:
         self._addcode("\tcall    strlib_print_nl")
 
     def rtcall_PRINT_INT(self) -> None:
-        self.abort("PRINT does not support INT expressions yet")
+        self._addlibfunc(MATHLIB, "div16_hlby10")
+        if self._addlibfunc(STRLIB, "strlib_int2str"):
+            self.emitdata('__strlib_int2str_conv: defs 7')
+        self._addcode("\tcall    strlib_int2str")
+        self.rtcall_PRINT()
 
     def rtcall_PRINT_REAL(self) -> None:
         self.abort("PRINT does not support REAL expressions yet")

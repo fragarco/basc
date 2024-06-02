@@ -140,7 +140,10 @@ class AsmContext:
                     testsymbol = ''
                 argcopy += c
 
-        narg = int(eval(argcopy))
+        try:
+            narg = int(eval(argcopy))
+        except:
+            abort(f"syntax error in expression")
 
         if not signed:
             if byte:
