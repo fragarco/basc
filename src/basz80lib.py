@@ -122,13 +122,13 @@ SM2Z80 = {
         "ex      de,hl",
         "xor     a",
         "sbc     hl,de",
-        "jpp     $ARG1"
+        "jp      p,$ARG1"
         ],
     'FORDOWN': [
         "pop     de",
         "xor     a",
         "sbc     hl,de",
-        "jpp     $ARG1"
+        "jp      p,$ARG1"
         ],
     'MKFRAME': [
         "push    ix",
