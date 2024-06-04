@@ -45,6 +45,7 @@ class BASParser:
         self.expr_stack: List[Expression] = []
         # start, limit, step, looplabel, endlabel
         self.for_stack: List[Tuple[Symbol, Symbol, Optional[Expression], Symbol, Symbol]] = []
+        self.while_stack: List[Tuple[str, str]] = []
         self.temp_vars: int = 0
 
     def abort(self, message: str) -> None:
@@ -359,6 +360,10 @@ class BASParser:
             self.cur_expr.pushval(tmpident, BASTypes.STR)
             self.next_token()
 
+    def command_INPUT(self) -> None:
+        """ <command_INPUT> [STRING;] IDENT """
+        assert self.cur_token is not None
+
     def command_GOTO(self) -> None:
         """ <command_GOTO> := GOTO (NUMBER | LABEL)"""
         assert self.cur_token is not None
@@ -423,8 +428,37 @@ class BASParser:
             self.emitter.rtcall('PRINT_LN')
 
     def command_THEN(self) -> None:
+        """ THEN out of sequence """
         assert self.cur_token is not None
         self.error(self.cur_token.srcline, ErrorCode.THEN)
+
+    def command_WHILE(self) -> None:
+        """ <command_WHILE> := <arg_int> NEWLINE <lines> WEND """
+        assert self.cur_token is not None
+        line = self.cur_token.srcline
+        self.arg_int()
+        if self.match_current(TokenType.NEWLINE):
+            self.next_token()
+            endwhile = self.symtab_newtmplabel(line)
+            startwhile = self.symtab_newtmplabel(line)
+            if endwhile is not None and startwhile is not None:
+                self.emitter.label(startwhile.symbol)
+                self.emitter.logical_expr(self.cur_expr, endwhile.symbol)
+                self.while_stack.append((startwhile.symbol, endwhile.symbol))
+                return
+        self.error(line, ErrorCode.SYNTAX)
+        
+    def command_WEND(self) -> None:
+        """ <command_WEND> := WEND """
+        assert self.cur_token is not None
+        line = self.cur_token.srcline
+        if len(self.while_stack) > 0:
+            (startlabel, endlabel) = self.while_stack.pop()
+            self.emitter.goto(startlabel)
+            self.emitter.label(endlabel)
+            self.next_token()
+        else:
+            self.error(line, ErrorCode.WEND)
 
     # Argument rules
 
