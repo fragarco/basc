@@ -499,6 +499,10 @@ class Symbol:
         self.puts = self.puts + 1
 
     def is_compatible(self, bastype: BASTypes) -> bool:
+        if bastype == BASTypes.STR:
+            # string type must be declared explicity with $ at the end so
+            # NONE is not valid in this case
+            return self.valtype == BASTypes.STR
         return self.valtype == BASTypes.NONE or self.valtype == bastype
 
     def print(self) -> None:

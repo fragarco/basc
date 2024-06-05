@@ -701,7 +701,7 @@ MATHLIB = {
     "comp16_signed": [
         "; signed comparison HL-DE, set Z and CY flags,\n",
         "; where CY indicates that HL < DE\n",
-        "cmp16_signed:\n",
+        "comp16_signed:\n",
         "\txor     a\n",
         "\tsbc     hl,de\n",
         "\tret     z\n",
@@ -713,7 +713,7 @@ MATHLIB = {
         "\tret\n",
     ],
     "comp16_unsigned": [
-        "cmp16:\n",
+        "comp16_unsigned:\n",
         "\txor     a\n",
         "\tsbc     hl,de\n",
         "\tret\n",

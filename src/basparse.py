@@ -129,10 +129,12 @@ class BASParser:
         symname, _ = self.symtab_name2type(symname)
         return self.symbols.search(symname)
 
-    def symtab_newtmpvar(self, srcline: int, expr: Expression) -> Optional[Symbol]:
+    def symtab_newtmpvar(self, expr: Expression) -> Optional[Symbol]:
         sname = f"tmp{self.temp_vars:03d}"
-        entry = self.symtab_addident(sname, srcline, expr)
+        sname, _ = self.symtab_name2type(sname)
+        entry = self.symbols.add(sname, SymTypes.SYMVAR)
         if entry is not None:
+            entry.set_value(expr)
             entry.temporal = True
             self.temp_vars = self.temp_vars + 1
         return entry
@@ -291,7 +293,7 @@ class BASParser:
                 if self.cur_token.text.upper() == 'TO':
                     self.next_token()
                     self.arg_int()
-                    limit = self.symtab_newtmpvar(self.cur_token.srcline, self.cur_expr)
+                    limit = self.symtab_newtmpvar(self.cur_expr)
                     assert limit is not None
                     self.emitter.assign(limit.symbol, self.cur_expr)
                     self.reset_curexpr()
@@ -353,7 +355,7 @@ class BASParser:
         # no need of pushing current expression as this function has not
         # parameters
         assert self.cur_token is not None
-        sym = self.symtab_newtmpvar(self.cur_token.srcline, Expression.string(""))
+        sym = self.symtab_newtmpvar(Expression.string(""))
         if sym is not None:
             self.emitter.rtcall('INKEYS', [], sym)
             tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
@@ -436,9 +438,9 @@ class BASParser:
         """ <command_WHILE> := <arg_int> NEWLINE <lines> WEND """
         assert self.cur_token is not None
         line = self.cur_token.srcline
+        self.next_token()
         self.arg_int()
         if self.match_current(TokenType.NEWLINE):
-            self.next_token()
             endwhile = self.symtab_newtmplabel(line)
             startwhile = self.symtab_newtmplabel(line)
             if endwhile is not None and startwhile is not None:
@@ -644,7 +646,7 @@ class BASParser:
             # add that variable to the expression
             strexpr = Expression()
             strexpr.pushval(self.cur_token, BASTypes.STR)
-            sym = self.symtab_newtmpvar(self.cur_token.srcline, strexpr)
+            sym = self.symtab_newtmpvar(strexpr)
             if sym is not None:
                 self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.STR)
                 self.next_token()
