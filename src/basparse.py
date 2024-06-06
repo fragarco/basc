@@ -23,6 +23,7 @@ from typing import List, Optional, Tuple
 from baslex import BASLexer
 from basemit import SMEmitter
 from bastypes import SymTypes, Symbol, SymbolTable, Token, TokenType, ErrorCode, Expression, BASTypes
+from bastypes import CodeBlock, CodeBlockType, ForBlockInfo
 
 class BASParser:
     """
@@ -44,8 +45,7 @@ class BASParser:
         self.cur_expr = Expression()
         self.expr_stack: List[Expression] = []
         # start, limit, step, looplabel, endlabel
-        self.for_stack: List[Tuple[Symbol, Symbol, Optional[Expression], Symbol, Symbol]] = []
-        self.while_stack: List[Tuple[str, str]] = []
+        self.block_stack: List[CodeBlock] = []
         self.temp_vars: int = 0
 
     def abort(self, message: str) -> None:
@@ -168,8 +168,14 @@ class BASParser:
         self.temp_vars = 0
         self.errors = 0
         self.lines()
-        if len(self.for_stack) != 0:
-            self.abort(ErrorCode.NONEXT)
+        if len(self.block_stack) > 0:
+            cblock = self.block_stack.pop()
+            if cblock.type == CodeBlockType.FOR:
+                self.abort(ErrorCode.NONEXT)
+            elif cblock.type == CodeBlockType.WHILE:
+                self.abort(ErrorCode.NOWEND)
+            else:
+                self.abort(ErrorCode.EOFMET)
         if self.errors:
             print(self.errors, "error(s) in total")
             sys.exit(1)
@@ -319,7 +325,9 @@ class BASParser:
                     startlabel = self.symtab_newtmplabel(self.cur_token.srcline)
                     endlabel = self.symtab_newtmplabel(self.cur_token.srcline)
                     assert startlabel is not None and endlabel is not None
-                    self.for_stack.append((variant, limit, step, startlabel, endlabel))
+                    codeblock = CodeBlock(CodeBlockType.FOR, startlabel, endlabel)
+                    codeblock.set_forinfo((variant, limit, step))
+                    self.block_stack.append(codeblock)
                     self.emitter.forloop(variant, limit, step, startlabel, endlabel)
                     return
             self.error(symbol.srcline, ErrorCode.SYNTAX)
@@ -393,19 +401,26 @@ class BASParser:
 
     def command_NEXT(self) -> None:
         """ <command_NEXT> := NEXT [IDENT] """
+        assert self.cur_token is not None
         self.next_token()
-        if len(self.for_stack) == 0:
+        if len(self.block_stack) == 0:
             assert self.cur_token is not None
             self.error(self.cur_token.srcline, ErrorCode.NEXT)
         else:
-            start, limit, step, looplabel, endlabel = self.for_stack.pop()
-            self.emitter.next(start, limit, step, looplabel, endlabel)
+            cblock = self.block_stack.pop()
+            if cblock.type != CodeBlockType.FOR:
+                self.block_stack.append(cblock)
+                self.error(self.cur_token.srcline, ErrorCode.NEXT)
+                return
+            assert cblock.blockinfo is not None
+            start, limit, step = cblock.blockinfo
+            self.emitter.next(start, limit, step, cblock.startlabel, cblock.endlabel)
             if self.match_current(TokenType.IDENT):
                 assert self.cur_token is not None
                 entry = self.symtab_search(self.cur_token.text)
                 if not entry or entry.symbol != start.symbol:
                     self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
-                    return
+                    self.block_stack.append(cblock)
                 else:
                     self.next_token()
 
@@ -446,7 +461,8 @@ class BASParser:
             if endwhile is not None and startwhile is not None:
                 self.emitter.label(startwhile.symbol)
                 self.emitter.logical_expr(self.cur_expr, endwhile.symbol)
-                self.while_stack.append((startwhile.symbol, endwhile.symbol))
+                cblock = CodeBlock(CodeBlockType.WHILE, startwhile, endwhile)
+                self.block_stack.append(cblock)
                 return
         self.error(line, ErrorCode.SYNTAX)
         
@@ -454,10 +470,15 @@ class BASParser:
         """ <command_WEND> := WEND """
         assert self.cur_token is not None
         line = self.cur_token.srcline
-        if len(self.while_stack) > 0:
-            (startlabel, endlabel) = self.while_stack.pop()
-            self.emitter.goto(startlabel)
-            self.emitter.label(endlabel)
+        if len(self.block_stack) > 0:
+            cblock = self.block_stack.pop()
+            if cblock.type != CodeBlockType.WHILE:
+                self.error(line, ErrorCode.WEND)
+                self.block_stack.append(cblock)
+                return
+    
+            self.emitter.goto(cblock.startlabel.symbol)
+            self.emitter.label(cblock.endlabel.symbol)
             self.next_token()
         else:
             self.error(line, ErrorCode.WEND)

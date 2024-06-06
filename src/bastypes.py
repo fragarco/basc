@@ -16,7 +16,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
 import enum
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Union, Type
 
 class ErrorCode:
     NEXT    = "Unexpected NEXT"
@@ -533,4 +533,30 @@ class SymbolTable:
 
     def getsymbols(self) -> List[str]:
         return list(self.symbols.keys())
+
+class CodeBlockType(enum.Enum):
+    FOR     = 1
+    WHILE   = 2
+    IF      = 3
+
+ForBlockInfo = Tuple[Symbol, Symbol, Optional[Expression]] # (variable, limit, step)
+
+class CodeBlock:
+    """
+    Each entry stores the relevant information about a block of
+    code (starting point, end point, type, etc.) like the ones
+    created by:
+    FOR <expression> <codeblock> NEXT
+    WHILE <expression> <codeblock> WEND
+    IF <condition> THEN <codeblock> [ELSE <codeblock>] IFEND
+    """
+    def __init__(self, type: CodeBlockType, startlabel: Symbol, endlabel: Symbol) -> None:
+        self.type = type
+        self.startlabel = startlabel
+        self.endlabel = endlabel
+        self.blockinfo: Optional[ForBlockInfo] = None
+
+    def set_forinfo(self, info: ForBlockInfo) -> None:
+        """ variant value,  end-condition value, optional step expression"""
+        self.blockinfo = info
 
