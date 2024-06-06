@@ -584,6 +584,46 @@ STRLIB = {
     ],
 }
 
+INPUTLIB = {
+    "inputlib_input": [
+        "inputlib_input:\n",
+        f"\tcall    {FWCALL.TXT_CUR_ENABLE} ; TXT_CUR_ENABLE\n",
+        f"\tcall    {FWCALL.TXT_CUR_ON} ; TXT_CUR_ON\n",
+        "\tld      d,h\n",
+        "\tld      e,l   ; DE = 1st parameter copy\n",
+        "\tld      bc,0  ; Initialize characters counter\n",
+        "__input_1:\n",
+        f"\tcall    {FWCALL.KM_WAIT_KEY} ; KM_WAIT_KEY\n",
+        "\tcp      127\n",
+        "\tjr      nz,__input_2\n",
+        "\tld      a,b\n",
+        "\tor      c\n",
+        "\tjr      z,__input_1    ; String length is zero\n",
+        "\tld      a,8\n",
+        f"\tcall    {FWCALL.TXT_OUTPUT} ; TXT_OUTPUT\n",
+        "\tld      a," "\n",
+        f"\tcall    {FWCALL.TXT_OUTPUT} ; TXT_OUTPUT\n",
+        "\tld      a,8\n",
+        f"\tcall    {FWCALL.TXT_OUTPUT} ; TXT_OUTPUT\n",
+        "\tdec     de\n",
+        "\tdec     bc\n",
+        "\tjr      __input_1\n",
+        "__input_2:\n",
+        "\tcp      13\n",
+        "\tjr      z,__input_3    ; Enter key pressed\n",
+        f"\tcall    {FWCALL.TXT_OUTPUT} ; TXT_OUTPUT\n",
+        "\tld      (de),a\n",
+        "\tinc     de\n",
+        "\tinc     bc\n",
+        "\tjr      __input_1\n",
+        "__input_3:\n",
+        "\txor     a\n",
+        "\tld      (de),a\n",
+        f"\tcall    {FWCALL.TXT_CUR_DISABLE} ; TXT_CUR_DISABLE\n",
+        f"\tjp      {FWCALL.TXT_CUR_OFF} ; TXT_CUR_OFF its ret will work as input ret\n",
+    ],
+}
+
 MATHLIB = {
     "mult16_unsigned": [
         "; 16x16 unsigned multplication, HL = HL*DE.\n",
