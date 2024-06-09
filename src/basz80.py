@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
 import sys
 from typing import List, Optional, Tuple, Any
-from basz80lib import SM2Z80, FWCALL, STRLIB, MATHLIB
+from basz80lib import SM2Z80, FWCALL, STRLIB, MATHLIB, INPUTLIB
 from bastypes import BASTypes, SymbolTable
 
 class Z80Backend:
@@ -95,7 +95,7 @@ class Z80Backend:
                 if symbol.is_constant() and symbol.is_tmp():
                     self.emitdata(f'{symbol.symbol}: db "{symbol.value[0][0].text}",&00')
                 else:    
-                    self.emitdata(f'{symbol.symbol}: defs 255')
+                    self.emitdata(f'{symbol.symbol}: defs 256')
             else:
                 # This symbol is a label that was processed by LABEL instruction
                 pass
@@ -188,3 +188,8 @@ class Z80Backend:
         self._addcode("\tpop     de")
         self._addcode("\tcall    strlib_strcopy")
 
+    def rtcall_INPUT(self) -> None:
+        if self._addlibfunc(INPUTLIB, "inputlib_input"):
+            self.emitdata('__inputlib_question: db "?",&0')
+            self.emitdata('__inputlib_redo: db "?Redo from start",&0')
+            self.emitdata('__inputlib_inbuf: defs 256')

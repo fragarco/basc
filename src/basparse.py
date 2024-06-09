@@ -373,6 +373,16 @@ class BASParser:
     def command_INPUT(self) -> None:
         """ <command_INPUT> [STRING;] IDENT """
         assert self.cur_token is not None
+        self.next_token()
+        if self.match_current(TokenType.STRING):
+            self.str_factor()
+            self.emitter.rtcall('PRINT', [self.cur_expr])
+        self.reset_curexpr()
+        while self.match_current(TokenType.IDENT):
+            self.ident_factor()
+            if self.match_current(TokenType.COMMA):
+                self.next_token()
+        self.emitter.rtcall('INPUT', [self.cur_expr])
 
     def command_GOTO(self) -> None:
         """ <command_GOTO> := GOTO (NUMBER | LABEL)"""
@@ -643,38 +653,61 @@ class BASParser:
             self.factor()
 
     def factor(self) -> None:
-        """<factor> ::= ID | INTEGER | REAL | STRING | <function>"""
+        """<factor> ::= <ident_factor> | <int_factor> | <real_factor> | <str_factor> | <fun_call>"""
         assert self.cur_token is not None
         if self.match_current(TokenType.IDENT):
-            sym = self.symtab_search(self.cur_token.text)
-            if sym is not None:
-                # store the token in the expression with the name keep in the
-                # symbols table
-                token = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
-                self.cur_expr.pushval(token, sym.valtype)
-                sym.inc_reads()
-                self.next_token()
-            else:
-                self.error(self.cur_token.srcline, ErrorCode.NOIDENT)
+            self.ident_factor()
         elif self.match_current(TokenType.INTEGER):
-            self.cur_expr.pushval(self.cur_token, BASTypes.INT)
-            self.next_token()
+            self.int_factor()
         elif self.match_current(TokenType.REAL):
-            self.cur_expr.pushval(self.cur_token, BASTypes.REAL)
-            self.next_token()
+            self.float_factor()
         elif self.match_current(TokenType.STRING):
-            # create a constant variable to assign the string literal and 
-            # add that variable to the expression
-            strexpr = Expression()
-            strexpr.pushval(self.cur_token, BASTypes.STR)
-            sym = self.symtab_newtmpvar(strexpr)
-            if sym is not None:
-                self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.STR)
-                self.next_token()
+            self.str_factor()
         else:
-            fname = self.cur_token.text.replace('$', 'S').upper()
-            function_rule = getattr(self, "function_" + fname, None)
-            if function_rule is None:
-                self.error(self.cur_token.srcline, f"function {self.cur_token.text} is not supported yet")
-            else:
-                function_rule()
+            self.fun_call()
+
+    def ident_factor(self):
+        """ <ident_factor> := IDENT """
+        assert self.cur_token is not None
+        sym = self.symtab_search(self.cur_token.text)
+        if sym is not None:
+            # store the token in the expression with the name keep in the
+            # symbols table
+            token = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
+            self.cur_expr.pushval(token, sym.valtype)
+            sym.inc_reads()
+            self.next_token()
+        else:
+            self.error(self.cur_token.srcline, ErrorCode.NOIDENT)
+
+    def int_factor(self):
+        """ <int_factor> := NUMBER """
+        assert self.cur_token is not None
+        self.cur_expr.pushval(self.cur_token, BASTypes.INT)
+        self.next_token()
+
+    def real_factor(self):
+        """ <real_factor> := NUMBER """
+        assert self.cur_token is not None
+        self.cur_expr.pushval(self.cur_token, BASTypes.REAL)
+        self.next_token()
+
+    def str_factor(self):
+        """ <str_factor> := STRING """
+        assert self.cur_token is not None
+        strexpr = Expression()
+        strexpr.pushval(self.cur_token, BASTypes.STR)
+        sym = self.symtab_newtmpvar(strexpr)
+        if sym is not None:
+            self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.STR)
+            self.next_token()
+
+    def func_factor(self):
+        """ <fun_call> := <function_NAME> """
+        assert self.cur_token is not None
+        fname = self.cur_token.text.replace('$', 'S').upper()
+        function_rule = getattr(self, "function_" + fname, None)
+        if function_rule is None:
+            self.error(self.cur_token.srcline, f"function {self.cur_token.text} is not supported yet")
+        else:
+            function_rule()
