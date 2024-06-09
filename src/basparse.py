@@ -371,18 +371,29 @@ class BASParser:
             self.next_token()
 
     def command_INPUT(self) -> None:
-        """ <command_INPUT> [STRING;] IDENT """
+        """ <command_INPUT> [#NUMBER][STRING(;|,)] IDENT [,IDENT] """
         assert self.cur_token is not None
         self.next_token()
+        channel = [Expression.int('0')]
+        if self.match_current(TokenType.CHANNEL):
+            self.arg_channel()
+            channel = [self.cur_expr]
+            self.reset_curexpr()
         if self.match_current(TokenType.STRING):
             self.str_factor()
-            self.emitter.rtcall('PRINT', [self.cur_expr])
+            #AAA add channel here
+            self.emitter.rtcall('PRINT',[self.cur_expr])
         self.reset_curexpr()
+        args = []
         while self.match_current(TokenType.IDENT):
             self.ident_factor()
+            # variables are stored from last to first so they get stacked in
+            # correct order to assign user input values
+            args.insert(0, self.cur_expr)
             if self.match_current(TokenType.COMMA):
                 self.next_token()
-        self.emitter.rtcall('INPUT', [self.cur_expr])
+            self.reset_curexpr()
+        self.emitter.rtcall('INPUT', channel + args)
 
     def command_GOTO(self) -> None:
         """ <command_GOTO> := GOTO (NUMBER | LABEL)"""
