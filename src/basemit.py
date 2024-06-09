@@ -155,6 +155,9 @@ class SMEmitter:
     def operate_str(self, op: str) -> None:
         if   op == '=':
             self._emit(SMI.LIBCALL, 'STRCOMP')
+        elif op == '<>':
+            self._emit(SMI.LIBCALL, 'STRCOMP')
+            self._emit(SMI.INC)  # -1 TRUE / 0 FALSE + 1 = NON EQ
         else:
             self.abort(f"Operation {op} is not currently supported with strings")
 

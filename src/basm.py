@@ -272,15 +272,34 @@ class AsmContext:
             print(str(e))
             abort("Couldn't open file '" + inputfile + "' for reading")
 
+    def split_line(self, codeline):
+        # one line can contain multiple statements separated by ':'
+        # however label: equ <values> and quoted strings are special cases
+        # here we deal with quoted colons
+        statements = []
+        start = 0
+        current = 0
+        quoted = False
+        while current < len(codeline):
+            if current == ':' and not quoted:
+                statements.append(codeline[start:current+1])
+                current = current + 1
+                start = current
+            elif current == '"':
+                quoted = not quoted
+            else:
+                current = current + 1
+        #add last statement
+        statements.append(codeline[start:])
+        return statements
+
     def get_statements(self, codeline):
         # remove comments
         codeline = codeline.strip().split(';')[0]
         # basic sanity checks
         statements = []
         index = 0
-        # one line can contain multiple statements separated by ':'
-        # however label: equ <values> is a special case
-        opcodes = codeline.split(':')
+        opcodes = self.split_line(codeline)
         while index < len(opcodes):
             opcode = opcodes[index]
             opcode = opcode.strip()
