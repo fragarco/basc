@@ -6,6 +6,8 @@ password$ = "please"
 WHILE answer$ <> password$
     PRINT "Introduce your password: "
     INPUT answer$
+    print "Respuesta ";
+    print answer$
 WEND
 PRINT "Access granted"
 

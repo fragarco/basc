@@ -585,6 +585,32 @@ STRLIB = {
         "\tld      hl,__strlib_int2str_conv\n",
         "\tret\n",
     ],
+    # based on routines created by Zeda here:
+    # https://github.com/Zeda/Z80-Optimized-Routines
+    "strlib_str2int": [
+        "; DE points to the string, ends pointing to the byte after the number\n",
+        "; HL is the result\n",
+        "; A is the 8-bit value of the number\n",
+        "strlib_str2int:\n",
+        "\tld      hl,0\n",
+        "__strlib_str2int_loop:\n",
+        "\tld      a,(de)\n",
+        "\tsub     &30  ; '0' character\n",
+        "\tcp      10\n",
+        "\tret     nc\n",
+        "\tinc     de\n",
+        "\tld      b,h\n",
+        "\tld      c,l\n",
+        "\tadd     hl,hl\n",
+        "\tadd     hl,hl\n",
+        "\tadd     hl,bc\n",
+        "\tadd     hl,hl\n",
+        "\tadd     a,l\n",
+        "\tld      l,a\n",
+        "\tjr      nc,__strlib_str2int_loop\n",
+        "\tinc     h\n",
+        "\tjp      __strlib_str2int_loop\n"
+    ]
 }
 
 INPUTLIB = {
@@ -596,14 +622,14 @@ INPUTLIB = {
         "\tld      bc,0  ; Initialize characters counter\n",
         "__input_enterchar:\n",
         f"\tcall    {FWCALL.KM_WAIT_KEY} ; KM_WAIT_KEY\n",
-        "\tcp      127\n  ; above call returns characters in range &00-&7F",
+        "\tcp      127  ; above call returns characters in range &00-&7F\n",
         "\tjr      nz,__input_checkenter\n",
         "\tld      a,b\n",
         "\tor      c\n",
         "\tjr      z,__input_enterchar    ; String length is zero\n",
         "\tld      a,8\n",
         f"\tcall    {FWCALL.TXT_OUTPUT} ; TXT_OUTPUT\n",
-        "\tld      a," "\n",
+        '\tld      a," "\n',
         f"\tcall    {FWCALL.TXT_OUTPUT} ; TXT_OUTPUT\n",
         "\tld      a,8\n",
         f"\tcall    {FWCALL.TXT_OUTPUT} ; TXT_OUTPUT\n",

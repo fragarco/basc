@@ -266,16 +266,11 @@ class BASParser:
             keyword_rule()
 
     def command_CLS(self) -> None:
-        """ <command_CLS> := CLS [<arg_channel>] """
+        """ <command_CLS> := CLS <arg_channel> """
         assert self.cur_token is not None
         self.next_token()
-        args = [Expression.int('0')]
-        if self.match_current(TokenType.CHANNEL):
-            self.push_curexpr()
-            self.arg_channel()
-            args = [self.cur_expr]
-            self.pop_curexpr()
-        self.emitter.rtcall('CLS', args)
+        self.arg_channel()
+        self.emitter.rtcall('CLS')
 
     def command_END(self) -> None:
         """ <command_END> := END """
@@ -371,20 +366,16 @@ class BASParser:
             self.next_token()
 
     def command_INPUT(self) -> None:
-        """ <command_INPUT> [#NUMBER][STRING(;|,)] IDENT [,IDENT] """
+        """ <command_INPUT> <arg_channel>[STRING(;|,)] IDENT [,IDENT] """
         assert self.cur_token is not None
+        line = self.cur_token.srcline
         self.next_token()
-        channel = [Expression.int('0')]
-        if self.match_current(TokenType.CHANNEL):
-            self.arg_channel()
-            channel = [self.cur_expr]
-            self.reset_curexpr()
+        self.arg_channel()
         if self.match_current(TokenType.STRING):
             self.str_factor()
-            #AAA add channel here
             self.emitter.rtcall('PRINT',[self.cur_expr])
         self.reset_curexpr()
-        args = []
+        args: List[Expression] = []
         while self.match_current(TokenType.IDENT):
             self.ident_factor()
             # variables are stored from last to first so they get stacked in
@@ -393,7 +384,14 @@ class BASParser:
             if self.match_current(TokenType.COMMA):
                 self.next_token()
             self.reset_curexpr()
-        self.emitter.rtcall('INPUT', channel + args)
+        nparams = len(args)
+        if nparams > 128:
+            self.error(line, ErrorCode.OVERFLOW)
+        elif nparams == 0:
+            self.error(line, ErrorCode.SYNTAX)
+        else:
+            args.append(Expression.int(str(nparams)))
+            self.emitter.rtcall('INPUT', args)
 
     def command_GOTO(self) -> None:
         """ <command_GOTO> := GOTO (NUMBER | LABEL)"""
@@ -446,10 +444,11 @@ class BASParser:
                     self.next_token()
 
     def command_PRINT(self) -> None:
-        """ <command_PRINT> := PRINT <expression> [;]"""
+        """ <command_PRINT> := PRINT <arg_channel> <expression> [;]"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
         self.next_token()
+        self.arg_channel()
         self.expression()
         if self.cur_expr.is_str_result():
             self.emitter.rtcall('PRINT', [self.cur_expr])
@@ -506,20 +505,8 @@ class BASParser:
 
     # Argument rules
 
-    def arg_channel(self) -> None:
-        """<arg_channel> = #<expression>.t == INT"""
-        assert self.cur_token is not None
-        line = self.cur_token.srcline
-        if self.match_current(TokenType.CHANNEL):
-            self.next_token()
-            self.expression()
-            if not self.cur_expr.is_int_result():
-                self.error(line, ErrorCode.TYPE)
-        else:
-            self.error(line, ErrorCode.SYNTAX)
-
     def arg_int(self) -> None:
-        """<arg_int> = #<expression>.t == INT"""
+        """<arg_int> = <expression>.t == INT"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
         self.expression()
@@ -529,7 +516,7 @@ class BASParser:
             self.error(line, ErrorCode.TYPE)
 
     def arg_real(self) -> None:
-        """<arg_real> = #<expression>.t == REAL"""
+        """<arg_real> = <expression>.t == REAL"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
         self.expression()
@@ -539,7 +526,7 @@ class BASParser:
             self.error(line, ErrorCode.TYPE)
 
     def arg_str(self) -> None:
-        """<arg_str> = #<expression>.t == STR"""
+        """<arg_str> = <expression>.t == STR"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
         self.expression()
@@ -547,6 +534,24 @@ class BASParser:
             self.error(line, ErrorCode.SYNTAX)
         elif not self.cur_expr.is_str_result():
             self.error(line, ErrorCode.TYPE)
+
+    def arg_channel(self) -> None:
+        """<arg_channel> := #NUMBER.t == INT"""
+        # If channel argument is not pressent, we have to
+        # assume 0
+        assert self.cur_token is not None
+        line = self.cur_token.srcline
+        channel = [Expression.int('0')]
+        if self.match_current(TokenType.CHANNEL):
+            self.push_curexpr()
+            self.next_token()
+            self.expression()
+            if not self.cur_expr.is_int_result():
+                self.error(line, ErrorCode.TYPE)
+                return
+            channel = [self.cur_expr]
+            self.pop_curexpr()
+        self.emitter.rtcall('CHANNEL_SET', channel)
 
     # Expression rules
 
@@ -671,7 +676,7 @@ class BASParser:
         elif self.match_current(TokenType.INTEGER):
             self.int_factor()
         elif self.match_current(TokenType.REAL):
-            self.float_factor()
+            self.real_factor()
         elif self.match_current(TokenType.STRING):
             self.str_factor()
         else:
@@ -713,7 +718,7 @@ class BASParser:
             self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.STR)
             self.next_token()
 
-    def func_factor(self):
+    def fun_call(self):
         """ <fun_call> := <function_NAME> """
         assert self.cur_token is not None
         fname = self.cur_token.text.replace('$', 'S').upper()

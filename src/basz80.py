@@ -136,10 +136,15 @@ class Z80Backend:
             return True
         return False
 
-    def rtcall_CLS(self) -> None:
+    def rtcall_CHANNEL_SET(self) -> None:
+        # 0-7 keyboard to screen
+        # 8   keyboard to printer
+        # 9   channel to file
         self._addcode("\tld      a,l")
-        self._addcode("\tand     &07   ;valid stream range 0-7")
+        self._addcode("\tand     &0F   ;valid stream range 0-9")
         self._addcode(f"\tcall    {FWCALL.TXT_STR_SELECT} ;TXT_STR_SELECT")
+
+    def rtcall_CLS(self) -> None:
         self._addcode(f"\tcall    {FWCALL.TXT_CLEAR_WINDOW} ;TXT_CLEAR_WINDOW")
 
     def rtcall_END(self) -> None:
@@ -193,3 +198,13 @@ class Z80Backend:
             self.emitdata('__inputlib_question: db "?",&0')
             self.emitdata('__inputlib_redo: db "?Redo from start",&0')
             self.emitdata('__inputlib_inbuf: defs 256')
+        self._addlibfunc(STRLIB, "strlib_copy")
+        self._addcode("\tpush    hl")
+        self._addcode("\tcall    inputlib_input")
+        self._addcode("\tpop     de")
+        self._addcode("\tld      b,e   ; number of pushed variables")
+        self._addcode("\tex      de,hl")
+        self._addcode("__input_assign_values:")
+        self._addcode("\tpop     hl")
+        self._addcode("\tcall    strlib_strcopy")
+        self._addcode("\tdjnz    __input_assign_values")
