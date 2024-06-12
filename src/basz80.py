@@ -203,7 +203,7 @@ class Z80Backend:
         self._addcode("\tcall    inputlib_input")
         self._addcode("\tpop     de")
         self._addcode("\tld      b,e   ; number of pushed variables")
-        self._addcode("\tex      de,hl")
+        self._addcode("\tld      de,__inputlib_inbuf")
         self._addcode("__input_assign_values:")
         self._addcode("\tpop     hl")
         self._addcode("\tcall    strlib_strcopy")
