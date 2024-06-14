@@ -374,7 +374,16 @@ class BASParser:
         if self.match_current(TokenType.STRING):
             self.str_factor()
             self.emitter.rtcall('PRINT',[self.cur_expr])
-        self.reset_curexpr()
+            self.reset_curexpr()
+            if self.match_current(TokenType.SEMICOLON):
+                self.emitter.rtcall('PRINT_QM', []) # print the question mark
+            elif not self.match_current(TokenType.COMMA):
+                self.error(line, ErrorCode.SYNTAX)
+                return
+            self.next_token()
+        else:
+            self.emitter.rtcall('PRINT_QM', []) # print the question mark
+
         args: List[Expression] = []
         while self.match_current(TokenType.IDENT):
             self.ident_factor()
@@ -385,14 +394,20 @@ class BASParser:
                 self.next_token()
             self.reset_curexpr()
         nparams = len(args)
-        if nparams > 128:
+        if nparams > 127:
             self.error(line, ErrorCode.OVERFLOW)
         elif nparams == 0:
             self.error(line, ErrorCode.SYNTAX)
         else:
-            args.append(Expression.int(str(nparams)))
-            self.emitter.rtcall('INPUT', args)
-
+            self.emitter.rtcall('INPUT', [])
+            for var in args:
+                if var.is_int_result():
+                    self.emitter.rtcall('INPUT_INT', [var])
+                if var.is_real_result():
+                    self.emitter.rtcall('INPUT_REAL', [var])
+                else:
+                    self.emitter.rtcall('INPUT_STR', [var])
+    
     def command_GOTO(self) -> None:
         """ <command_GOTO> := GOTO (NUMBER | LABEL)"""
         assert self.cur_token is not None

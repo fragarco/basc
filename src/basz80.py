@@ -183,6 +183,11 @@ class Z80Backend:
     def rtcall_PRINT_REAL(self) -> None:
         self.abort("PRINT does not support REAL expressions yet")
     
+    def rtcall_PRINT_QM(self) -> None:
+        """ print a question mark and a space """
+        self._addcode("\tld      hl,__inputlib_question")
+        self.rtcall_PRINT()
+
     def rtcall_STRCOMP(self) -> None:
         self._addlibfunc(STRLIB, "strlib_comp")
         self._addcode("\tpop     de")
@@ -195,16 +200,19 @@ class Z80Backend:
 
     def rtcall_INPUT(self) -> None:
         if self._addlibfunc(INPUTLIB, "inputlib_input"):
-            self.emitdata('__inputlib_question: db "?",&0')
+            self.emitdata('__inputlib_question: db "?"," ",&0')
             self.emitdata('__inputlib_redo: db "?Redo from start",&0')
             self.emitdata('__inputlib_inbuf: defs 256')
-        self._addlibfunc(STRLIB, "strlib_copy")
-        self._addcode("\tpush    hl")
+
         self._addcode("\tcall    inputlib_input")
-        self._addcode("\tpop     de")
-        self._addcode("\tld      b,e   ; number of pushed variables")
         self._addcode("\tld      de,__inputlib_inbuf")
-        self._addcode("__input_assign_values:")
-        self._addcode("\tpop     hl")
+
+    def rtcall_INPUT_INT(self) -> None:
+        self.abort("INPUT does not support INT variables yet")
+
+    def rtcall_INPUT_REAL(self) -> None:
+        self.abort("INPUT does not support REAL variables yet")
+
+    def rtcall_INPUT_STR(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tcall    strlib_strcopy")
-        self._addcode("\tdjnz    __input_assign_values")

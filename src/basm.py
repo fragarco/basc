@@ -272,26 +272,24 @@ class AsmContext:
             print(str(e))
             abort("Couldn't open file '" + inputfile + "' for reading")
 
-    def split_line(self, codeline):
-        # one line can contain multiple statements separated by ':'
-        # however label: equ <values> and quoted strings are special cases
-        # here we deal with quoted colons
-        statements = []
+    @staticmethod
+    def split_line(instr, sep):
+        # Here we deal with splitting a text line by a separator symbol but
+        # we ignore that symbol if it is between quoted colons
+        result = []
         start = 0
         current = 0
         quoted = False
-        while current < len(codeline):
-            if current == ':' and not quoted:
-                statements.append(codeline[start:current+1])
-                current = current + 1
-                start = current
-            elif current == '"':
+        while current < len(instr):
+            if instr[current] == sep and not quoted:
+                result.append(instr[start: current])
+                start = current + 1
+            elif instr[current] == '"':
                 quoted = not quoted
-            else:
-                current = current + 1
-        #add last statement
-        statements.append(codeline[start:])
-        return statements
+            current = current + 1
+        # add trail
+        result.append(instr[start:])
+        return result
 
     def get_statements(self, codeline):
         # remove comments
@@ -299,7 +297,8 @@ class AsmContext:
         # basic sanity checks
         statements = []
         index = 0
-        opcodes = self.split_line(codeline)
+        # one line can have multiple instructions separated by :
+        opcodes = self.split_line(codeline, ':')
         while index < len(opcodes):
             opcode = opcodes[index]
             opcode = opcode.strip()
@@ -459,7 +458,7 @@ def check_args(args, expected):
     if args == '':
         received = 0
     else:
-        received = len(args.split(','))
+        received = len(AsmContext.split_line(args, ','))
     if expected != received:
         abort("wrong number of arguments, expected "+str(expected)+" but received "+str(args))
 
@@ -571,7 +570,7 @@ def op_DEFM(p, opargs):
    return op_DEFB(p, opargs)
 
 def op_DEFB(p, opargs):
-    args = opargs.split(',')
+    args = AsmContext.split_line(opargs, ',')
     bytes = []
     for arg in args:
         texts = re.findall(r'"(.*?)"', arg)

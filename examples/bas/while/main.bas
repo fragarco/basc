@@ -4,10 +4,9 @@
 answer$ = ""
 password$ = "please"
 WHILE answer$ <> password$
-    PRINT "Introduce your password: ";
-    INPUT answer$
+    INPUT "What is the password: ", answer$
 WEND
-PRINT "Access granted"
+PRINT "That is correct, access granted"
 
 endloop:
     GOTO endloop
