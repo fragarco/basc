@@ -357,13 +357,16 @@ class BASParser:
             self.arg_int()
             args.append(self.cur_expr)
             self.pop_curexpr()
+            digits = Expression.int('4')
             if self.match_current(TokenType.COMMA):
                 self.next_token()
                 self.push_curexpr()
                 self.arg_int()
-                args.append(self.cur_expr)
+                digits = self.cur_expr
                 self.pop_curexpr()
+            args.append(digits)
             self.emitter.rtcall('HEXS', args, sym)
+            sym.inc_writes()
             tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
             self.cur_expr.pushval(tmpident, BASTypes.STR)
             if not self.match_current(TokenType.RPAR):
@@ -403,6 +406,7 @@ class BASParser:
         sym = self.symtab_newtmpvar(Expression.string(""))
         if sym is not None:
             self.emitter.rtcall('INKEYS', [], sym)
+            sym.inc_writes()
             tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
             self.cur_expr.pushval(tmpident, BASTypes.STR)
             self.next_token()
@@ -517,6 +521,7 @@ class BASParser:
             args.append(self.cur_expr)
             self.pop_curexpr()
             self.emitter.rtcall('PEEK', args, sym)
+            sym.inc_writes()
             tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
             self.cur_expr.pushval(tmpident, BASTypes.INT)
             if not self.match_current(TokenType.RPAR):

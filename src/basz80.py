@@ -151,7 +151,12 @@ class Z80Backend:
         self._addcode("\tjp      0  ; reset")
 
     def rtcall_HEXS(self) -> None:
-        self.abort('AAA HEX$ is not implemented yet')
+        self._addlibfunc(STRLIB, "strlib_int2hex")
+        # the second parameters is ignored right now
+        self._addcode("\tld      a,l    ; number of characters only 2 or 4 are supported")
+        self._addcode("\tpop     de     ; number to convert")
+        self._addcode("\tpop     hl     ; destination buffer")
+        self._addcode("\tcall    strlib_int2hex")
 
     def rtcall_INKEYS(self) -> None:
         self._addcode(f"\tcall    {FWCALL.KM_READ_CHAR} ;KM_READ_CHAR")

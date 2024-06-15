@@ -542,8 +542,8 @@ STRLIB = {
     "strlib_int2str": [
         "; HL = starts with the number to convert to string\n",
         "; DE = memory address to convertion buffer\n",
-        "; HL ends storing the memory address to the buffer\n"
-        "; subroutine taken from https://wikiti.brandonw.net/index.php?title=Z80_Routines:Other:DispA\n"
+        "; HL ends storing the memory address to the buffer\n",
+        "; subroutine taken from https://wikiti.brandonw.net/index.php?title=Z80_Routines:Other:DispA\n",
         "strlib_int2str:\n",
         "\tld      de,__strlib_int2str_conv\n"
         "\t; Detect sign of HL\n",
@@ -585,12 +585,12 @@ STRLIB = {
         "\tld      hl,__strlib_int2str_conv\n",
         "\tret\n",
     ],
-    # based on routines created by Zeda here:
-    # https://github.com/Zeda/Z80-Optimized-Routines
     "strlib_str2int": [
         "; DE points to the string, ends pointing to the byte after the number\n",
         "; HL is the result\n",
         "; A is the 8-bit value of the number\n",
+        "; Routine based in the library created by Zeda:\n",
+        "; https://github.com/Zeda/Z80-Optimized-Routines\n",
         "strlib_str2int:\n",
         "\tld      hl,0\n",
         "__strlib_str2int_loop:\n",
@@ -610,7 +610,49 @@ STRLIB = {
         "\tjr      nc,__strlib_str2int_loop\n",
         "\tinc     h\n",
         "\tjp      __strlib_str2int_loop\n"
-    ]
+    ],
+    "strlib_int2hex": [
+        "; HL = destination memory address\n",
+        "; A  = number of characters: 2 or 4\n",
+        "; DE = Number to convert to hex string\n",
+        "; Routine taken initially from book 'Ready Made Machine Language Routines'\n",
+        "strlib_int2hex:\n",
+        "\tpush    hl\n",
+        "\tcp      2\n",
+        "\tjr      z,__strlib_int2hex_low\n",
+        "\tld      a,d\n",
+        "\tcall    __strlib_a2hex\n",
+        "__strlib_int2hex_low:\n",
+        "\tld      a,e\n",
+        "\tcall    __strlib_a2hex\n",
+        "\tpop     hl\n",
+        "\tret\n",
+        "__strlib_a2hex:\n",
+        "\tld      b,2    ; b=0 marks the end\n",
+        "\tld      c,a    ; original number\n",
+        "\trr      a      ; move high order bits\n",
+        "\trr      a      ; into the low part\n",
+        "\trr      a\n",
+        "\trr      a\n",
+        "__strlib_a2hex_conv:\n",
+        "\tand     &0F\n",
+        "\tcp      &0A    ; check if is greater or equal\n",
+        "\tjr      nc,__strlib_a2hex_letter\n",
+        "\tadd     a,&30  ; get the number ASCII code\n",
+        "\tjr      __strlib_a2hex_store:\n",
+        "__strlib_a2hex_letter:\n",
+        "\tadd     a,&37\n",
+        "__strlib_a2hex_store:\n",
+        "\tld      (hl),a\n",
+        "\tinc     hl\n",
+        "\tdec     b\n",
+        "\tjr      z,__strlib_a2hex_end:\n",
+        "\tld      a,c\n",
+        "\tjr      __strlib_a2hex_conv\n",
+        "__strlib_a2hex_end:\n",
+        "\tld      (hl),0\n",
+        "\tret\n",
+    ],
 }
 
 INPUTLIB = {
