@@ -150,6 +150,9 @@ class Z80Backend:
     def rtcall_END(self) -> None:
         self._addcode("\tjp      0  ; reset")
 
+    def rtcall_HEXS(self) -> None:
+        self.abort('AAA HEX$ is not implemented yet')
+
     def rtcall_INKEYS(self) -> None:
         self._addcode(f"\tcall    {FWCALL.KM_READ_CHAR} ;KM_READ_CHAR")
         self._addcode("\tjr      c,@+3  ; if not character then A=0")
@@ -159,11 +162,35 @@ class Z80Backend:
         self._addcode("\tinc     hl")
         self._addcode("\tld      (hl),&00")
 
+    def rtcall_INPUT(self) -> None:
+        if self._addlibfunc(INPUTLIB, "inputlib_input"):
+            self.emitdata('__inputlib_question: db "?"," ",&0')
+            self.emitdata('__inputlib_redo: db "?Redo from start",&0')
+            self.emitdata('__inputlib_inbuf: defs 256')
+        self._addcode("\tcall    inputlib_input")
+        self._addcode("\tld      de,__inputlib_inbuf")
+
+    def rtcall_INPUT_INT(self) -> None:
+        self.abort("INPUT does not support INT variables yet")
+
+    def rtcall_INPUT_REAL(self) -> None:
+        self.abort("INPUT does not support REAL variables yet")
+
+    def rtcall_INPUT_STR(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_copy")
+        self._addcode("\tcall    strlib_strcopy")
+
     def rtcall_MODE(self) -> None:
         self._addcode("\tpush    af")
         self._addcode("\tld      a,l")
         self._addcode(f"\tcall    {FWCALL.SCR_SET_MODE} ;SCR_SET_MODE")
         self._addcode("\tpop     af")
+
+    def rtcall_PEEK(self) -> None:
+        # HL contains the memory we want to read
+        self._addcode("\tld      a,(hl)")
+        self._addcode("\tpop     hl")
+        self._addcode("\tld      (hl),a")
 
     def rtcall_PRINT(self) -> None:
         self._addlibfunc(STRLIB, "strlib_print_str")
@@ -196,25 +223,6 @@ class Z80Backend:
     def rtcall_STRCOPY(self) -> None:
         self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tpop     de")
-        self._addcode("\tcall    strlib_strcopy")
-
-    def rtcall_INPUT(self) -> None:
-        if self._addlibfunc(INPUTLIB, "inputlib_input"):
-            self.emitdata('__inputlib_question: db "?"," ",&0')
-            self.emitdata('__inputlib_redo: db "?Redo from start",&0')
-            self.emitdata('__inputlib_inbuf: defs 256')
-
-        self._addcode("\tcall    inputlib_input")
-        self._addcode("\tld      de,__inputlib_inbuf")
-
-    def rtcall_INPUT_INT(self) -> None:
-        self.abort("INPUT does not support INT variables yet")
-
-    def rtcall_INPUT_REAL(self) -> None:
-        self.abort("INPUT does not support REAL variables yet")
-
-    def rtcall_INPUT_STR(self) -> None:
-        self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tcall    strlib_strcopy")
 
 
