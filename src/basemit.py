@@ -185,6 +185,8 @@ class SMEmitter:
                 else:
                     # stored value
                     self.load_symbol(token.text)
+            elif token.is_real():
+                self.abort("real numbers in expressions are not supported yet")
             else:
                 if   type == BASTypes.INT: self.operate_int(token.text)
                 elif type == BASTypes.REAL:self.operate_real(token.text)

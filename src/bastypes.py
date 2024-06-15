@@ -315,11 +315,11 @@ class Token:
         return self.type == TokenType.STRING
     
     def is_int(self) -> bool:
-        # Check if the token is a string literal
+        # Check if the token is an integer literal
         return self.type == TokenType.INTEGER
     
     def is_real(self) -> bool:
-        # Check if the token is a string literal
+        # Check if the token is a real literal
         return self.type == TokenType.REAL
 
     def __str__(self) -> str:
