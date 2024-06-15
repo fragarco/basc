@@ -365,8 +365,19 @@ class BASParser:
             self.cur_expr.pushval(tmpident, BASTypes.STR)
             self.next_token()
 
+    def function_AT(self) -> None:
+        """ <function_AT> := @<ident_factor> """
+        assert self.cur_token is not None
+        atop = self.cur_token
+        self.next_token()
+        if self.match_current(TokenType.IDENT):
+            self.ident_factor()
+            self.cur_expr.pushop(atop)
+        else:
+            self.error(atop.srcline, ErrorCode.SYNTAX)
+
     def command_INPUT(self) -> None:
-        """ <command_INPUT> <arg_channel>[STRING(;|,)] IDENT [,IDENT] """
+        """ <command_INPUT> := INPUT <arg_channel>[STRING(;|,)] IDENT [,IDENT] """
         assert self.cur_token is not None
         line = self.cur_token.srcline
         self.next_token()

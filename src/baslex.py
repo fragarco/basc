@@ -197,6 +197,9 @@ class BASLexer:
         elif self.cur_char == '#':
             token = Token('#', TokenType.CHANNEL, self.cur_line)
 
+        elif self.cur_char == '@':
+            token = Token('AT', TokenType.AT, self.cur_line)
+    
         elif self.cur_char.isdigit():
             token = self._get_number()
            

@@ -146,10 +146,16 @@ class SMEmitter:
         elif op == '>=': self._emit(SMI.GE)
         elif op == '<=': self._emit(SMI.LE)
         elif op == 'NEG': self._emit(SMI.NEG)
+        elif op == 'AT':
+            # memory address already loaded so this has no futher effects
+            self._emit(SMI.NOP)
         else:
             self.abort(f"Operation {op} is not currently supported with integers")
     
     def operate_real(self, op: str) -> None:
+        if op == 'AT':
+            # memory address already loaded so this has no futher effects
+            self._emit(SMI.NOP)
         self.abort(f"Operation {op} is not currently supported with real numbers")
 
     def operate_str(self, op: str) -> None:
@@ -158,6 +164,9 @@ class SMEmitter:
         elif op == '<>':
             self._emit(SMI.LIBCALL, 'STRCOMP')
             self._emit(SMI.INC)  # -1 TRUE / 0 FALSE + 1 = NON EQ
+        elif op == 'AT':
+            # memory address already loaded so this has no futher effects
+            self._emit(SMI.NOP)
         else:
             self.abort(f"Operation {op} is not currently supported with strings")
 
@@ -168,7 +177,9 @@ class SMEmitter:
                 self.load_num(token.text)
             elif token.is_ident():
                 if i > 0: self._emit(SMI.PUSH)
-                if type == BASTypes.STR:
+                # check if next operant is @ (get memory address)
+                next_at = (i + 1) < len(expression.expr) and expression.expr[i+1][0].text == 'AT'
+                if next_at or type == BASTypes.STR:
                     # memory address
                     self._emit(SMI.LDVAL, token.text)
                 else:

@@ -90,7 +90,7 @@ class Z80Backend:
             if symbol.valtype == BASTypes.INT:
                 self.emitdata(f'{symbol.symbol}: dw 0')
             elif symbol.valtype == BASTypes.REAL:
-                self.emitdata(f'{symbol.symbol}: dw 0,0')
+                self.emitdata(f'{symbol.symbol}: db 0,0,0,0,0')
             elif symbol.valtype == BASTypes.STR:
                 if symbol.is_constant() and symbol.is_tmp():
                     self.emitdata(f'{symbol.symbol}: db "{symbol.value[0][0].text}",&00')
@@ -216,3 +216,50 @@ class Z80Backend:
     def rtcall_INPUT_STR(self) -> None:
         self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tcall    strlib_strcopy")
+
+
+    """
+    def fp(x: float) -> tuple[str, str]:
+        # Returns a floating point number as EXP+128, Mantissa
+
+        def bin32(f: float) -> str:
+             #Returns ASCII 32 bit binary representation of a number
+            return bin(int(f) & 0xFFFF_FFFF)[2:].zfill(32)
+
+        def bindec32(f: float) -> str:
+            # Returns binary representation of a mantissa x (x is float)
+            result = "0"
+            a = f
+
+            if f >= 1:
+                result = bin32(f)
+
+            result += "."
+            c = int(a)
+
+            for i in range(32):
+                a -= c
+                a *= 2
+                c = int(a)
+                result += str(c)
+
+            return result
+
+        e = 0  # exponent
+        s = 1 if x < 0 else 0  # sign
+        m = abs(x)  # mantissa
+
+        while m >= 1:
+            m /= 2.0
+            e += 1
+
+        while 0 < m < 0.5:
+            m *= 2.0
+            e -= 1
+
+        M = bindec32(m)[3:]
+        M = str(s) + M
+        E = bin32(e + 128)[-8:] if x != 0 else bin32(0)[-8:]
+
+        return M, E
+    """

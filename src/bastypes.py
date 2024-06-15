@@ -66,6 +66,7 @@ class TokenType(enum.Enum):
     IDENT = 3
     CHANNEL = 4
     REAL = 5
+    AT = 6
 
     # keywords
     TK_KEYWORDS = 99
@@ -413,8 +414,10 @@ class Expression:
                     self.expr[i] = (token, BASTypes.INT)
                     bastype = BASTypes.INT
                 else:
-                    # This is one factor operation like NEG, works only with integers
-                    if top1 != BASTypes.INT:
+                    # This is one factor operation like NEG or AT
+                    # all of them produce INT results right now
+                    bastype = BASTypes.INT
+                    if token.type != TokenType.AT and top1 != BASTypes.INT:
                         return False
                     self.expr[i] = (token, BASTypes.INT)
                     bastype = BASTypes.INT
