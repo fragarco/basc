@@ -231,6 +231,7 @@ class BASParser:
          assert self.cur_token is not None
          self.statement()
          if (self.match_current(TokenType.COLON)):
+              self.next_token()
               self.statements()
 
     def statement(self) -> None:
@@ -264,6 +265,18 @@ class BASParser:
             self.error(self.cur_token.srcline, ErrorCode.NOKEYW, ": " + self.cur_token.text)
         else:
             keyword_rule()
+
+
+    def function_AT(self) -> None:
+        """ <function_AT> := @<ident_factor> """
+        assert self.cur_token is not None
+        atop = self.cur_token
+        self.next_token()
+        if self.match_current(TokenType.IDENT):
+            self.ident_factor()
+            self.cur_expr.pushop(atop)
+        else:
+            self.error(atop.srcline, ErrorCode.SYNTAX)
 
     def command_CLS(self) -> None:
         """ <command_CLS> := CLS <arg_channel> """
@@ -329,6 +342,35 @@ class BASParser:
         else:
             self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
+    def function_HEXS(self) -> None:
+        """ <function_HEXS> := HEX$ <arg_int> [,<arg_int>]"""
+        assert self.cur_token is not None
+        self.next_token()
+        if not self.match_current(TokenType.LPAR):
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+            return
+        self.next_token()
+        sym = self.symtab_newtmpvar(Expression.string(""))
+        if sym is not None:
+            args: List[Expression] = []
+            self.push_curexpr()
+            self.arg_int()
+            args.append(self.cur_expr)
+            self.pop_curexpr()
+            if self.match_current(TokenType.COMMA):
+                self.next_token()
+                self.push_curexpr()
+                self.arg_int()
+                args.append(self.cur_expr)
+                self.pop_curexpr()
+            self.emitter.rtcall('HEXS', args, sym)
+            tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
+            self.cur_expr.pushval(tmpident, BASTypes.STR)
+            if not self.match_current(TokenType.RPAR):
+                self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+                return
+            self.next_token()
+
     def command_IF(self) -> None:
         """ <command_IF> := IF <expression> (THEN|GOTO) (LABEL | NUMBER | <statements>) [ELSE (LABEL| NUMBER | <statements>)] NEWLINE"""
         assert self.cur_token is not None
@@ -354,7 +396,7 @@ class BASParser:
             self.emitter.label(endif.symbol)
 
     def function_INKEYS(self) -> None:
-        """ <function_INKEYS> := INKEYS """
+        """ <function_INKEYS> := INKEY$ """
         # no need of pushing current expression as this function has not
         # parameters
         assert self.cur_token is not None
@@ -365,16 +407,6 @@ class BASParser:
             self.cur_expr.pushval(tmpident, BASTypes.STR)
             self.next_token()
 
-    def function_AT(self) -> None:
-        """ <function_AT> := @<ident_factor> """
-        assert self.cur_token is not None
-        atop = self.cur_token
-        self.next_token()
-        if self.match_current(TokenType.IDENT):
-            self.ident_factor()
-            self.cur_expr.pushop(atop)
-        else:
-            self.error(atop.srcline, ErrorCode.SYNTAX)
 
     def command_INPUT(self) -> None:
         """ <command_INPUT> := INPUT <arg_channel>[STRING(;|,)] IDENT [,IDENT] """
@@ -468,6 +500,29 @@ class BASParser:
                     self.block_stack.append(cblock)
                 else:
                     self.next_token()
+
+    def function_PEEK(self) -> None:
+        """ <function_PEEK> := PEEK <arg_int> """
+        assert self.cur_token is not None
+        self.next_token()
+        if not self.match_current(TokenType.LPAR):
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+            return
+        self.next_token()
+        sym = self.symtab_newtmpvar(Expression.int('0'))
+        if sym is not None:
+            args: List[Expression] = []
+            self.push_curexpr()
+            self.arg_int()
+            args.append(self.cur_expr)
+            self.pop_curexpr()
+            self.emitter.rtcall('PEEK', args, sym)
+            tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
+            self.cur_expr.pushval(tmpident, BASTypes.INT)
+            if not self.match_current(TokenType.RPAR):
+                self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+                return
+            self.next_token()
 
     def command_PRINT(self) -> None:
         """ <command_PRINT> := PRINT <arg_channel> <expression> [;]"""
