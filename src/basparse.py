@@ -789,10 +789,13 @@ class BASParser:
         self.next_token()
 
     def real_factor(self):
-        """ <real_factor> := NUMBER """
-        assert self.cur_token is not None
-        self.cur_expr.pushval(self.cur_token, BASTypes.REAL)
-        self.next_token()
+        """ <real_factor> := REAL """
+        realexpr = Expression()
+        realexpr.pushval(self.cur_token, BASTypes.REAL)
+        sym = self.symtab_newtmpvar(realexpr)
+        if sym is not None:
+            self.cur_expr.pushval(Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline), BASTypes.REAL)
+            self.next_token()
 
     def str_factor(self):
         """ <str_factor> := STRING """

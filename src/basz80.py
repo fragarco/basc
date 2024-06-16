@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 import sys
 from typing import List, Optional, Tuple, Any
 from basz80lib import SM2Z80, FWCALL, STRLIB, MATHLIB, INPUTLIB
-from bastypes import BASTypes, SymbolTable
+from bastypes import BASTypes, SymbolTable, Symbol
 
 class Z80Backend:
     """
@@ -38,8 +38,61 @@ class Z80Backend:
         print(f"Fatal error: {message}")
         sys.exit(1)
 
-    def emitlibcode(self, code: str) -> None:
-        self.libcode.append(code + '\n')
+    def _real(self, number: str) -> bytearray:
+        """
+        In Amstrad BASIC, a floating point number is stored in base-2 in a normalized form 1 x 2 ** <exp>
+        The representation uses 5 bytes stored using the following structure:
+        | M (31-24) | M	(23-16) | M	(15-8) | sign + M (7-0) | exponent |
+        The exponent is 8-bit an uses a bias of 128 (128-255 possitive, 0-127 negative)
+        """
+        n = float(number)
+        sign = '1' if n < 0 else '0'
+        exp = 0
+        prec = abs(n)
+    
+        while prec >= 1:
+            exp = exp + 1
+            prec = prec / 2.0
+        while 0 < prec < 0.5:
+            prec = prec * 2
+            exp = exp - 1
+
+        exp = 0 if exp == 0 else exp + 128
+        bit = 0
+        mant = ""
+        for i in range(32):
+            prec = prec - bit
+            prec = prec * 2
+            bit = int(prec)
+            mant = mant + str(bit)
+        # round values last bit
+        if prec > 0.5: mant = mant[:-1] + '1'
+        # is normalized so drop first bit and used it for sign
+        mant = sign + mant[1:]
+        real = bytearray(int(mant, 2).to_bytes(4, byteorder='little'))
+        real.extend(exp.to_bytes())
+        return real
+
+    def _emitrealsym(self, sym: Symbol) -> None:
+        codedreal = bytearray(0 for i in range(5))
+        if sym.is_constant() and sym.is_tmp():
+            codedreal = self._real(sym.value[0][0].text)
+        code = f'{sym.symbol}: db '
+        for b in codedreal:
+            code = code + f'&{b:02X},'
+        # send code without last ','
+        self.emitdata(code[:-1])
+
+    def _addcode(self, line: str) -> None:
+        self.code.append(line + '\n')
+
+    def _addlibfunc(self, lib: Any, fname: str) -> bool:
+        if fname not in self.libs:
+            self.libs.append(fname)
+            fcode: List[str] = lib[fname]
+            self.libcode = self.libcode + fcode
+            return True
+        return False
 
     def _emitauxcode(self, inst: str) -> None:
         if inst == "MUL" or inst == "UMUL":
@@ -58,7 +111,9 @@ class Z80Backend:
         elif inst in ["LT", "GT", "LE", "GE"]:
             self._addlibfunc(MATHLIB, "comp16_signed")
             self._addlibfunc(MATHLIB, "comp16_unsigned")
-            
+    
+    def emitlibcode(self, code: str) -> None:
+        self.libcode.append(code + '\n')
     
     def emitcode(self, inst: str, arg: str, prefix: str) -> None:
         if inst == "LIBCALL":
@@ -76,6 +131,13 @@ class Z80Backend:
     def emitdata(self, code: str) -> None:
         self.data.append(code + '\n')
 
+    def emit_rtcall(self, fun: str) -> None:
+        fun_cb = getattr(self, "rtcall_" + fun, None)
+        if fun_cb is None:
+            self.abort(f"{fun} call is not implemented yet")
+        else:
+            fun_cb()
+
     def generatecode(self, orgaddr: int) -> None:
         self.code.append('org &%04X\n' % orgaddr)
         self.code = self.code + ["\n","; CODE AREA\n", "\n"]
@@ -88,9 +150,9 @@ class Z80Backend:
         for symname in self.symbols.getsymbols():
             symbol = self.symbols.get(symname)
             if symbol.valtype == BASTypes.INT:
-                self.emitdata(f'{symbol.symbol}: dw 0')
+                self.emitdata(f'{symbol.symbol}: dw &00')
             elif symbol.valtype == BASTypes.REAL:
-                self.emitdata(f'{symbol.symbol}: db 0,0,0,0,0')
+                self._emitrealsym(symbol)
             elif symbol.valtype == BASTypes.STR:
                 if symbol.is_constant() and symbol.is_tmp():
                     self.emitdata(f'{symbol.symbol}: db "{symbol.value[0][0].text}",&00')
@@ -117,24 +179,6 @@ class Z80Backend:
             fd.writelines(self.data)
 
     # BASIC commands and functions
-
-    def emit_rtcall(self, fun: str) -> None:
-        fun_cb = getattr(self, "rtcall_" + fun, None)
-        if fun_cb is None:
-            self.abort(f"{fun} call is not implemented yet")
-        else:
-            fun_cb()
-
-    def _addcode(self, line: str) -> None:
-        self.code.append(line + '\n')
-
-    def _addlibfunc(self, lib: Any, fname: str) -> bool:
-        if fname not in self.libs:
-            self.libs.append(fname)
-            fcode: List[str] = lib[fname]
-            self.libcode = self.libcode + fcode
-            return True
-        return False
 
     def rtcall_CHANNEL_SET(self) -> None:
         # 0-7 keyboard to screen
@@ -229,50 +273,3 @@ class Z80Backend:
         self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tpop     de")
         self._addcode("\tcall    strlib_strcopy")
-
-
-    """
-    def fp(x: float) -> tuple[str, str]:
-        # Returns a floating point number as EXP+128, Mantissa
-
-        def bin32(f: float) -> str:
-             #Returns ASCII 32 bit binary representation of a number
-            return bin(int(f) & 0xFFFF_FFFF)[2:].zfill(32)
-
-        def bindec32(f: float) -> str:
-            # Returns binary representation of a mantissa x (x is float)
-            result = "0"
-            a = f
-
-            if f >= 1:
-                result = bin32(f)
-
-            result += "."
-            c = int(a)
-
-            for i in range(32):
-                a -= c
-                a *= 2
-                c = int(a)
-                result += str(c)
-
-            return result
-
-        e = 0  # exponent
-        s = 1 if x < 0 else 0  # sign
-        m = abs(x)  # mantissa
-
-        while m >= 1:
-            m /= 2.0
-            e += 1
-
-        while 0 < m < 0.5:
-            m *= 2.0
-            e -= 1
-
-        M = bindec32(m)[3:]
-        M = str(s) + M
-        E = bin32(e + 128)[-8:] if x != 0 else bin32(0)[-8:]
-
-        return M, E
-    """

@@ -179,14 +179,11 @@ class SMEmitter:
                 if i > 0: self._emit(SMI.PUSH)
                 # check if next operant is @ (get memory address)
                 next_at = (i + 1) < len(expression.expr) and expression.expr[i+1][0].text == 'AT'
-                if next_at or type == BASTypes.STR:
-                    # memory address
-                    self._emit(SMI.LDVAL, token.text)
-                else:
-                    # stored value
+                if not next_at and type == BASTypes.INT:
+                    # only integers are loaded directly, string, reals or memory addresses does not
                     self.load_symbol(token.text)
-            elif token.is_real():
-                self.abort("real numbers in expressions are not supported yet")
+                else:
+                    self._emit(SMI.LDVAL, token.text)          
             else:
                 if   type == BASTypes.INT: self.operate_int(token.text)
                 elif type == BASTypes.REAL:self.operate_real(token.text)
