@@ -264,6 +264,12 @@ class Z80Backend:
         self._addcode("\tld      hl,__inputlib_question")
         self.rtcall_PRINT()
 
+    def rtcall_REALCOPY(self) -> None:
+        self._addcode("\tpop     de")
+        self._addcode("\tex      de,hl")
+        self._addcode("\tld      bc,5")
+        self._addcode("\tldir")
+
     def rtcall_STRCOMP(self) -> None:
         self._addlibfunc(STRLIB, "strlib_comp")
         self._addcode("\tpop     de")

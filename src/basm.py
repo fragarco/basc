@@ -78,9 +78,10 @@ class AsmContext:
                 break
 
         arg = arg.replace('@', '(' + str(self.origin) + ')') # storage location, next address
+        arg = arg.replace('$', '(' + str(self.origin) + ')') # storage location, next address
         arg = arg.replace('%', '0b') # syntax for binary literals
         arg = arg.replace(' MOD ', '%') # Maxam syntax for modulus
-        arg = re.sub(r'&|#|$([0-9a-fA-F]+\b)', r'0x\g<1>', arg) # hex numbers must start with &, $ or #
+        arg = re.sub(r'&|#([0-9a-fA-F]+\b)', r'0x\g<1>', arg) # hex numbers must start with &, $ or #
 
         # fix capitalized hex or binary Python symbol
         # don't do these except at the start of a token

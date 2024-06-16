@@ -58,13 +58,13 @@ SM2Z80 = {
     'INCGLOB': [
         "ld      hl,$ARG1",
         "inc     (hl)",
-        "jrnz    @+2",
+        "jrnz    $+2",
         "inc     hl",
         "inc     (hl)"
         ],
     'INCLOCL': [
         "inc     (ix+L)",
-        "jrnz    @+3",
+        "jrnz    $+3",
         "inc     (ix+H)"
         ],
     'INC': ["inc     hl"],
@@ -156,7 +156,7 @@ SM2Z80 = {
         "ld      hl,&FFFF",
         "ld      a,d",
         "or      e",
-        "jrnz    @+3",
+        "jrnz    $+3",
         "inc     hl"
         ],
     'ADD': [
@@ -228,7 +228,7 @@ SM2Z80 = {
         "xor     a",
         "sbc     hl,de",
         "ld      hl,&FFFF  ; hl = -1",
-        "jr      z,@+3",
+        "jr      z,$+3",
         "inc     hl        ; hl = 0"
         ],
     'NE': [
@@ -236,7 +236,7 @@ SM2Z80 = {
         "xor     a",
         "sbc     hl,de",
         "ld      hl,&FFFF  ; hl = -1",
-        "jr      nz,@+3",
+        "jr      nz,$+3",
         "inc     hl        ; hl = 0"
         ],
     'LT': [
@@ -244,21 +244,21 @@ SM2Z80 = {
         "ex      de,hl",
         "call    comp16_signed",
         "ld      hl,&FFFF  ; hl = -1",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "inc     hl        ; hl = 0"
         ],
     'GT': [
         "pop     de",
         "call    comp16_signed",
         "ld      hl,&FFFF  ; hl = -1",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "inc     hl        ; hl = 0"
         ],
     'LE': [
         "pop     de",
         "call    comp16_signed",
         "ld      hl,0      ; hl = 0",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "dec     hl        ; hl = -1"
         ],
     'GE': [
@@ -266,7 +266,7 @@ SM2Z80 = {
         "ex      de,hl",
         "call    comp16_signed",
         "ld      hl,0      ; hl = 0",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "dec     hl        ; hl = -1"
         ],
     'UMUL': [
@@ -284,7 +284,7 @@ SM2Z80 = {
         "xor     a",
         "sbc     hl,de",
         "ld      hl,&FFFF  ; hl = -1",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "inc     hl        ; hl = 0"
         ],
     'UGT': [
@@ -292,7 +292,7 @@ SM2Z80 = {
         "xor     a",
         "sbc     hl,de",
         "ld      hl,&FFFF  ; hl = -1",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "inc     hl        ; hl = 0"
         ],
     'ULE': [
@@ -300,7 +300,7 @@ SM2Z80 = {
         "xor     a",
         "sbc     hl,de",
         "ld      hl,0      ; hl = 0",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "dec     hl        ; hl = -1"
         ],
     'UGE': [
@@ -309,7 +309,7 @@ SM2Z80 = {
         "xor     a",
         "sbc     hl,de",
         "ld      hl,0      ; hl = 0",
-        "jr      c,@+3",
+        "jr      c,$+3",
         "dec     hl        ; hl = -1"
         ],
     'JMPEQ': [
@@ -449,41 +449,67 @@ class FWCALL:
     TXT_STR_SELECT      = "&BBB4"
     TXT_SWAP_STREAMS    = "&BBB7"
 
-    SCR_INITIALISE      = "#BBFF"
-    SCR_RESET           = "#BC02"
-    SCR_SET_OFFSET      = "#BC05"
-    SCR_SET_BASE        = "#BC08"
-    SCR_GET_LOCATION    = "#BC0B"
-    SCR_SET_MODE        = "#BC0E"
-    SCR_GET_MODE        = "#BC11"
-    SCR_CLEAR           = "#BC14"
-    SCR_CHAR_LIMITS     = "#BC17"
-    SCR_CHAR_POSITION   = "#BC1A"
-    SCR_DOT_POSITION    = "#BC1D"
-    SCR_NEXT_BYTE       = "#BC20"
-    SCR_PREV_BYTE       = "#BC23"
-    SCR_NEXT_LINE       = "#BC26"
-    SCR_PREV_LINE       = "#BC29"
-    SCR_INK_ENCODE      = "#BC2C"
-    SCR_INK_DECODE      = "#BC2F"
-    SCR_SET_INK         = "#BC32"
-    SCR_GET_INK         = "#BC35"
-    SCR_SET_BORDER      = "#BC38"
-    SCR_GET_BORDER      = "#BC3B"
-    SCR_SET_FLASHING    = "#BC3E"
-    SCR_GET_FLASHING    = "#BC41"
-    SCR_FILL_BOX        = "#BC44"
-    SCR_FLOOD_BOX       = "#BC17"
-    SCR_CHAR_INVERT     = "#BC4A"
-    SCR_HW_ROLL         = "#BC4D"
-    SCR_SW_ROLL         = "#BC50"
-    SCR_UNPACK          = "#BC53"
-    SCR_REPACK          = "#BC56"
-    SCR_ACCESS          = "#BC59"
-    SCR_PIXELS          = "#BC5C"
-    SCR_HORIZONTAL      = "#BC5F"
-    SCR_VERTICAL        = "#BC62"
-
+    SCR_INITIALISE      = "&BBFF"
+    SCR_RESET           = "&BC02"
+    SCR_SET_OFFSET      = "&BC05"
+    SCR_SET_BASE        = "&BC08"
+    SCR_GET_LOCATION    = "&BC0B"
+    SCR_SET_MODE        = "&BC0E"
+    SCR_GET_MODE        = "&BC11"
+    SCR_CLEAR           = "&BC14"
+    SCR_CHAR_LIMITS     = "&BC17"
+    SCR_CHAR_POSITION   = "&BC1A"
+    SCR_DOT_POSITION    = "&BC1D"
+    SCR_NEXT_BYTE       = "&BC20"
+    SCR_PREV_BYTE       = "&BC23"
+    SCR_NEXT_LINE       = "&BC26"
+    SCR_PREV_LINE       = "&BC29"
+    SCR_INK_ENCODE      = "&BC2C"
+    SCR_INK_DECODE      = "&BC2F"
+    SCR_SET_INK         = "&BC32"
+    SCR_GET_INK         = "&BC35"
+    SCR_SET_BORDER      = "&BC38"
+    SCR_GET_BORDER      = "&BC3B"
+    SCR_SET_FLASHING    = "&BC3E"
+    SCR_GET_FLASHING    = "&BC41"
+    SCR_FILL_BOX        = "&BC44"
+    SCR_FLOOD_BOX       = "&BC17"
+    SCR_CHAR_INVERT     = "&BC4A"
+    SCR_HW_ROLL         = "&BC4D"
+    SCR_SW_ROLL         = "&BC50"
+    SCR_UNPACK          = "&BC53"
+    SCR_REPACK          = "&BC56"
+    SCR_ACCESS          = "&BC59"
+    SCR_PIXELS          = "&BC5C"
+    SCR_HORIZONTAL      = "&BC5F"
+    SCR_VERTICAL        = "&BC62"
+    
+    MATH_MOVE_REAL      = "&BD3D"
+    MATH_INT_TO_REAL    = "&BD40"
+    MATH_BIN_TO_REAL    = "&BD43"
+    MATH_REAL_TO_INT    = "&BD46"
+    MATH_REAL_TO_BIN    = "&BD49"
+    MATH_REAL_FIX       = "&BD4C"
+    MATH_REAL_INT       = "&BD4F"
+    MATH_REAL_10A       = "&BD55"
+    MATH_REAL_ADD       = "&BD58"
+    MATH_REAL_REV_SUBS  = "&BD5E"
+    MATH_REAL_MULT      = "&BD61"
+    MATH_REAL_DIV       = "&BD64"
+    MATH_REAL_COMP      = "&BD6A"
+    MATH_REAL_UMINUS    = "&BD6D"
+    MATH_REAL_SIGNUM    = "&BD70"
+    MATH_SET_ANGLE_MODE = "&BD73"
+    MATH_REAL_PI        = "&BD76"
+    MATH_REAL_SQR       = "&BD79"
+    MATH_REAL_POWER     = "&BD7C"
+    MATH_REAL_LOG       = "&BD7F"
+    MATH_REAL_LOG_10    = "&BD82"
+    MATH_REAL_EXP       = "&BD85"
+    MATH_REAL_SINE      = "&BD88"
+    MATH_REAL_COSINE    = "&BD8B"
+    MATH_REAL_TANGENT   = "&BD8E"
+    MATH_REAL_ARCTANGENT= "&BD91"
 #
 # Utility routines and libraries
 #
@@ -575,7 +601,7 @@ STRLIB = {
         "__strlib_int2str_convert2:\n",
         "\t; Retrieve digits from stack\n",
         "\tpop     af\n",
-        "\tor      #30\n",
+        "\tor      &30\n",
         "\tld      (de), a\n",
         "\tinc     de\n",
         "\tdjnz    __strlib_int2str_convert2\n",
@@ -639,14 +665,14 @@ STRLIB = {
         "\tcp      &0A    ; check if is greater or equal\n",
         "\tjr      nc,__strlib_a2hex_letter\n",
         "\tadd     a,&30  ; get the number ASCII code\n",
-        "\tjr      __strlib_a2hex_store:\n",
+        "\tjr      __strlib_a2hex_store\n",
         "__strlib_a2hex_letter:\n",
         "\tadd     a,&37\n",
         "__strlib_a2hex_store:\n",
         "\tld      (hl),a\n",
         "\tinc     hl\n",
         "\tdec     b\n",
-        "\tjr      z,__strlib_a2hex_end:\n",
+        "\tjr      z,__strlib_a2hex_end\n",
         "\tld      a,c\n",
         "\tjr      __strlib_a2hex_conv\n",
         "__strlib_a2hex_end:\n",
@@ -830,7 +856,7 @@ MATHLIB = {
         "\tret\n",
     ],
     "div16_hlby10": [
-        ";Taken from https://learn.cemetech.net/index.php/Z80:Math_Routines#Speed_Optimised_HL_div_10\n",
+        ";Taken from https://learn.cemetech.net/index.php/Z80:Math_Routines&Speed_Optimised_HL_div_10\n",
         ";Inputs:\n",
         ";     HL\n",
         ";Outputs:\n",
@@ -850,10 +876,10 @@ MATHLIB = {
         "\tadd     hl,hl\n",
         "\trla\n",
         "\tcp      c\n",
-        "\tjr      c,@+4\n",
+        "\tjr      c,$+4\n",
         "\tsub     c\n",
         "\tinc     l\n",
-        "\tdjnz    @-7\n",
+        "\tdjnz    $-7\n",
         "\tret\n",
     ],
 }
