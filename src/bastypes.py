@@ -242,6 +242,8 @@ class TokenType(enum.Enum):
     XPOS = 269
     YPOS = 270
     ZONE = 271
+    SPC  = 272
+    TAB  = 273
 
     # Numeric expression tokens
     TK_NUM_OPS = 500
@@ -541,6 +543,7 @@ class CodeBlockType(enum.Enum):
     FOR     = 1
     WHILE   = 2
     IF      = 3
+    PRINT   = 4
 
 ForBlockInfo = Tuple[Symbol, Symbol, Optional[Expression]] # (variable, limit, step)
 

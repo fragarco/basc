@@ -530,6 +530,8 @@ STRLIB = {
         "strlib_print_spc:\n",
         "\tld      a,l\n",
         "\tand     &7F\n",
+        "\tcp      0\n",
+        "\tret     z\n",
         "\tld      b,a\n",
         "\tld      a,32   ; white space\n",
         "__print_spc_loop:"

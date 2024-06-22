@@ -343,7 +343,7 @@ class BASParser:
             self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
     def function_HEXS(self) -> None:
-        """ <function_HEXS> := HEX$ <arg_int> [,<arg_int>]"""
+        """ <function_HEXS> := HEX$(<arg_int> [,<arg_int>])"""
         assert self.cur_token is not None
         self.next_token()
         if not self.match_current(TokenType.LPAR):
@@ -507,7 +507,7 @@ class BASParser:
                     self.next_token()
 
     def function_PEEK(self) -> None:
-        """ <function_PEEK> := PEEK <arg_int> """
+        """ <function_PEEK> := PEEK(<arg_int>) """
         assert self.cur_token is not None
         self.next_token()
         if not self.match_current(TokenType.LPAR):
@@ -536,7 +536,39 @@ class BASParser:
         line = self.cur_token.srcline
         self.next_token()
         self.arg_channel()
+        cblock = CodeBlock(CodeBlockType.PRINT, None, None)
+        self.block_stack.append(cblock)
         self.list_printables()
+        self.block_stack.pop()
+
+    def command_SPC(self) -> None:
+        """ <command_SPC> := SPC(<arg_int>)"""
+        assert self.cur_token is not None
+        if len(self.block_stack) == 0 or self.block_stack[-1].type != CodeBlockType.PRINT:
+            self.error(ErrorCode.SYNTAX)
+            return
+        self.next_token()
+        if not self.match_current(TokenType.LPAR):
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+            return
+        self.next_token()
+        args: List[Expression] = []
+        self.push_curexpr()
+        self.arg_int()
+        args.append(self.cur_expr)
+        self.pop_curexpr()
+        self.emitter.rtcall('PRINT_SPC', args)
+        if not self.match_current(TokenType.RPAR):
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+            return
+        self.next_token()
+
+    def command_TAB(self) -> None:
+        """ 
+        <function_TAB> := TAB(<arg_int>)
+        Right now, TAB(x) and SPC(x) do the same thing
+        """
+        self.command_SPC()
 
     def command_THEN(self) -> None:
         """ THEN out of sequence """
@@ -631,6 +663,10 @@ class BASParser:
         """ <list_printables> := <expresion>[(;|,)<expresion>*]"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
+        allowedcmd = [TokenType.SPC, TokenType.TAB]
+        while self.cur_token.type in allowedcmd:
+            cmd_rule = getattr(self, "command_" + self.cur_token.text, None)
+            cmd_rule()
         self.expression()
         while not self.cur_expr.is_empty():
             if self.cur_expr.is_str_result():
@@ -654,6 +690,9 @@ class BASParser:
                     return
             elif self.match_current(TokenType.NEWLINE):
                 break
+            while self.cur_token.type in allowedcmd:
+                cmd_rule = getattr(self, "command_" + self.cur_token.text, None)
+                cmd_rule()
             self.expression()    
         self.emitter.rtcall('PRINT_LN')
     
