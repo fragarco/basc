@@ -14,8 +14,8 @@ mainloop:
     GOTO mainloop
 
 endyes:
-    PRINT "You have selected YES ",
-    PRINT "after",tries,"tries"
+    PRINT "You have selected YES ";
+    PRINT "after ";tries;" tries"
     tries = 0
     GOTO mainloop
 
