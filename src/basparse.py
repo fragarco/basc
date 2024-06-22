@@ -531,25 +531,12 @@ class BASParser:
             self.next_token()
 
     def command_PRINT(self) -> None:
-        """ <command_PRINT> := PRINT <arg_channel> <expression> [;]"""
+        """ <command_PRINT> := PRINT <arg_channel> <list_printables>"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
         self.next_token()
         self.arg_channel()
-        self.expression()
-        if self.cur_expr.is_str_result():
-            self.emitter.rtcall('PRINT', [self.cur_expr])
-        elif self.cur_expr.is_int_result():
-            self.emitter.rtcall('PRINT_INT', [self.cur_expr])
-        elif self.cur_expr.is_real_result():
-            self.emitter.rtcall('PRINT_REAL', [self.cur_expr])
-        else:
-            self.error(line, ErrorCode.SYNTAX)
-            return
-        if self.match_current(TokenType.SEMICOLON):
-            self.next_token()
-        else:
-            self.emitter.rtcall('PRINT_LN')
+        self.list_printables()
 
     def command_THEN(self) -> None:
         """ THEN out of sequence """
@@ -640,6 +627,34 @@ class BASParser:
             self.pop_curexpr()
         self.emitter.rtcall('CHANNEL_SET', channel)
 
+    def list_printables(self) -> None:
+        """ <list_printables> := <expresion>[(;|,)<expresion>*]"""
+        assert self.cur_token is not None
+        line = self.cur_token.srcline
+        self.expression()
+        while not self.cur_expr.is_empty():
+            if self.cur_expr.is_str_result():
+                self.emitter.rtcall('PRINT', [self.cur_expr])
+            elif self.cur_expr.is_int_result():
+                self.emitter.rtcall('PRINT_INT', [self.cur_expr])
+            elif self.cur_expr.is_real_result():
+                self.emitter.rtcall('PRINT_REAL', [self.cur_expr])
+            else:
+                self.error(line, ErrorCode.SYNTAX)
+                return
+            self.reset_curexpr()
+            if self.match_current(TokenType.SEMICOLON):
+                self.next_token()
+                if self.match_current(TokenType.NEWLINE) or self.match_current(TokenType.COLON):
+                    return
+            elif self.match_current(TokenType.COMMA):
+                self.emitter.rtcall('PRINT_SPC', [Expression.int('4')])
+                self.next_token()
+            elif self.match_current(TokenType.NEWLINE):
+                break
+            self.expression()    
+        self.emitter.rtcall('PRINT_LN')
+    
     # Expression rules
 
     def expression(self) -> None:
@@ -654,9 +669,11 @@ class BASParser:
             self.cur_expr.pushop(op)
         try:
             if not self.cur_expr.check_types():
+                self.reset_curexpr()
                 self.error(line, ErrorCode.TYPE)
         except Exception:
             # bad formed expression
+            self.reset_curexpr()
             self.error(line, ErrorCode.SYNTAX)
 
     def or_term(self) -> None:
@@ -751,6 +768,7 @@ class BASParser:
             if self.match_current(TokenType.RPAR):
                 self.next_token()
             else:
+                self.reset_curexpr()
                 self.error(partoken.srcline, ErrorCode.SYNTAX)
         else:
             self.factor()
@@ -781,6 +799,7 @@ class BASParser:
             sym.inc_reads()
             self.next_token()
         else:
+            self.reset_curexpr()
             self.error(self.cur_token.srcline, ErrorCode.NOIDENT)
 
     def int_factor(self):
@@ -814,6 +833,7 @@ class BASParser:
         fname = self.cur_token.text.replace('$', 'S').upper()
         function_rule = getattr(self, "function_" + fname, None)
         if function_rule is None:
+            self.reset_curexpr()
             self.error(self.cur_token.srcline, f"function {self.cur_token.text} is not supported yet")
         else:
             function_rule()
