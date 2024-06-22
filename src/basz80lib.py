@@ -524,6 +524,19 @@ STRLIB = {
         f"\tcall    {FWCALL.TXT_OUTPUT}\n",
         "\tret\n\n"
     ],
+    "strlib_print_spc": [
+        "; HL indicates the number of spaces to print\n",
+        "; but 127 is the maximum\n",
+        "strlib_print_spc:\n",
+        "\tld      a,l\n",
+        "\tand     &7F\n",
+        "\tld      b,a\n",
+        "\tld      a,32   ; white space\n",
+        "__print_spc_loop:"
+        f"\tcall    {FWCALL.TXT_OUTPUT}\n",
+        "\tdjnz    __print_spc_loop\n",
+        "\tret\n\n"
+    ],
     "strlib_print_str": [
         "; HL = address to the string to print\n",
         "strlib_print_str:\n",

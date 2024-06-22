@@ -14,13 +14,15 @@ mainloop:
     GOTO mainloop
 
 endyes:
-    PRINT "You have selected YES"
-    PRINT "After ";tries;" tries"
+    PRINT "You have selected YES ",
+    PRINT "after",tries,"tries"
+    tries = 0
     GOTO mainloop
 
 endno:
-    PRINT "You have selected NO"
-    PRINT "After ";tries;" tries"
+    PRINT "You have selected NO ";
+    PRINT "after ";tries;" tries"
+    tries = 0
     GOTO mainloop
 
 

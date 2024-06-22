@@ -650,6 +650,8 @@ class BASParser:
             elif self.match_current(TokenType.COMMA):
                 self.emitter.rtcall('PRINT_SPC', [Expression.int('4')])
                 self.next_token()
+                if self.match_current(TokenType.NEWLINE) or self.match_current(TokenType.COLON):
+                    return
             elif self.match_current(TokenType.NEWLINE):
                 break
             self.expression()    

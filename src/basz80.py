@@ -252,10 +252,6 @@ class Z80Backend:
         self._addlibfunc(STRLIB, "strlib_print_str")
         self._addcode("\tcall    strlib_print_str")
 
-    def rtcall_PRINT_LN(self) -> None:
-        self._addlibfunc(STRLIB, "strlib_print_nl")
-        self._addcode("\tcall    strlib_print_nl")
-
     def rtcall_PRINT_INT(self) -> None:
         self._addlibfunc(MATHLIB, "div16_hlby10")
         if self._addlibfunc(STRLIB, "strlib_int2str"):
@@ -263,13 +259,21 @@ class Z80Backend:
         self._addcode("\tcall    strlib_int2str")
         self.rtcall_PRINT()
 
-    def rtcall_PRINT_REAL(self) -> None:
-        self.abort("PRINT does not support REAL expressions yet")
-    
+    def rtcall_PRINT_LN(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_print_nl")
+        self._addcode("\tcall    strlib_print_nl")
+
     def rtcall_PRINT_QM(self) -> None:
         """ print a question mark and a space """
         self._addcode("\tld      hl,__inputlib_question")
         self.rtcall_PRINT()
+
+    def rtcall_PRINT_REAL(self) -> None:
+        self.abort("PRINT does not support REAL expressions yet")
+
+    def rtcall_PRINT_SPC(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_print_spc")
+        self._addcode("\tcall    strlib_print_spc")
 
     def rtcall_REALCOPY(self) -> None:
         self._addcode("\tpop     de")
