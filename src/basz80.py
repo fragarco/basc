@@ -220,13 +220,20 @@ class Z80Backend:
         self._addcode("\tld      de,__inputlib_inbuf")
 
     def rtcall_INPUT_INT(self) -> None:
-        self.abort("INPUT does not support INT variables yet")
+        self._addlibfunc(STRLIB, "strlib_dropspaces")
+        self._addlibfunc(STRLIB, "strlib_str2int")
+        self._addcode("\tcall    strlib_dropspaces")
+        self._addcode("\tcall    strlib_str2int")
 
     def rtcall_INPUT_REAL(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_dropspaces")
+        self._addcode("\tcall    strlib_dropspaces")
         self.abort("INPUT does not support REAL variables yet")
 
     def rtcall_INPUT_STR(self) -> None:
+        self._addlibfunc(STRLIB, "strlib_dropspaces")
         self._addlibfunc(STRLIB, "strlib_copy")
+        self._addcode("\tcall    strlib_dropspaces")
         self._addcode("\tcall    strlib_strcopy")
 
     def rtcall_MODE(self) -> None:

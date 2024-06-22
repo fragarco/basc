@@ -434,9 +434,10 @@ class BASParser:
         args: List[Expression] = []
         while self.match_current(TokenType.IDENT):
             self.ident_factor()
-            # variables are stored from last to first so they get stacked in
-            # correct order to assign user input values
-            args.insert(0, self.cur_expr)
+            # we want addresses in memory to store inputs,
+            # so @ is implicit in the syntax
+            self.cur_expr.pushop(Token('AT', TokenType.AT, line))
+            args.append(self.cur_expr)
             if self.match_current(TokenType.COMMA):
                 self.next_token()
             self.reset_curexpr()
@@ -450,7 +451,7 @@ class BASParser:
             for var in args:
                 if var.is_int_result():
                     self.emitter.rtcall('INPUT_INT', [var])
-                if var.is_real_result():
+                elif var.is_real_result():
                     self.emitter.rtcall('INPUT_REAL', [var])
                 else:
                     self.emitter.rtcall('INPUT_STR', [var])

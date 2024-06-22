@@ -484,6 +484,7 @@ class FWCALL:
     SCR_HORIZONTAL      = "&BC5F"
     SCR_VERTICAL        = "&BC62"
     
+    # WATCH OUT: this are 464 addresses
     MATH_MOVE_REAL      = "&BD3D"
     MATH_INT_TO_REAL    = "&BD40"
     MATH_BIN_TO_REAL    = "&BD43"
@@ -532,6 +533,16 @@ STRLIB = {
         "\tinc     hl\n",
         f"\tcall    {FWCALL.TXT_OUTPUT}\n",
         "\tjr      strlib_print_str\n\n"
+    ],
+    "strlib_dropspaces": [
+        "; DE points to the string\n",
+        "; DE ends pointing to end of char or character <> ' '\n"
+        "strlib_dropspaces:\n",
+        "\tld      a,(de)\n",
+        "\tcp      &20     ; white space\n",
+        "\tret     nz\n",
+        "\tinc     de\n",
+        "\tjr      strlib_dropspaces\n"
     ],
     "strlib_copy": [
         "; HL = destination\n",
@@ -612,30 +623,39 @@ STRLIB = {
         "\tret\n",
     ],
     "strlib_str2int": [
-        "; DE points to the string, ends pointing to the byte after the number\n",
-        "; HL is the result\n",
+        "; DE points to the string, ends pointing to the next char not processed\n",
+        "; HL points to de memory where to store the integer\n",
         "; A is the 8-bit value of the number\n",
         "; Routine based in the library created by Zeda:\n",
         "; https://github.com/Zeda/Z80-Optimized-Routines\n",
         "strlib_str2int:\n",
+        "\tpush    hl\n"
         "\tld      hl,0\n",
         "__strlib_str2int_loop:\n",
         "\tld      a,(de)\n",
         "\tsub     &30  ; '0' character\n",
         "\tcp      10\n",
-        "\tret     nc\n",
+        "\tjr      nc,__strlib_str2int_end\n",
         "\tinc     de\n",
         "\tld      b,h\n",
         "\tld      c,l\n",
-        "\tadd     hl,hl\n",
-        "\tadd     hl,hl\n",
-        "\tadd     hl,bc\n",
-        "\tadd     hl,hl\n",
+        "\tadd     hl,hl  ; x2\n",
+        "\tadd     hl,hl  ; x4\n",
+        "\tadd     hl,bc  ; x5\n",
+        "\tadd     hl,hl  ; x10\n",
         "\tadd     a,l\n",
         "\tld      l,a\n",
         "\tjr      nc,__strlib_str2int_loop\n",
         "\tinc     h\n",
         "\tjp      __strlib_str2int_loop\n"
+        "__strlib_str2int_end:\n"
+        "\tld      b,h\n",
+        "\tld      c,l\n",
+        "\tpop     hl\n",
+        "\tld      (hl),c\n",
+        "\tinc     hl\n",
+        "\tld      (hl),b\n",
+        "\tret\n",
     ],
     "strlib_int2hex": [
         "; HL = destination memory address\n",
