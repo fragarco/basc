@@ -203,7 +203,7 @@ class SMEmitter:
             self._emit(SMI.PUSH)
             self._emit(SMI.LDVAL, variable_name)
             self._emit(SMI.LIBCALL, 'STRCOPY')
-        if expression.is_real_result():
+        elif expression.is_real_result():
             self._emit(SMI.PUSH)
             self._emit(SMI.LDVAL, variable_name)
             self._emit(SMI.LIBCALL, 'REALCOPY')

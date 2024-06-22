@@ -204,7 +204,7 @@ class Z80Backend:
 
     def rtcall_INKEYS(self) -> None:
         self._addcode(f"\tcall    {FWCALL.KM_READ_CHAR} ;KM_READ_CHAR")
-        self._addcode("\tjr      c,@+3  ; if not character then A=0")
+        self._addcode("\tjr      c,$+3  ; if not character then A=0")
         self._addcode("\txor     a")
         self._addcode("\tpop     hl     ; destination address")
         self._addcode("\tld      (hl),a")
