@@ -184,25 +184,43 @@ class Z80Backend:
         # 0-7 keyboard to screen
         # 8   keyboard to printer
         # 9   channel to file
+        self._addcode("\t; CHANNEL SET")
         self._addcode("\tld      a,l")
         self._addcode("\tand     &0F   ;valid stream range 0-9")
         self._addcode(f"\tcall    {FWCALL.TXT_STR_SELECT} ;TXT_STR_SELECT")
+        self._addcode("\t;")
+
+    def rtcall_CHRS(self) -> None:
+        self._addcode("\t; CHR$")
+        self._addcode("\tpop     de     ; destination buffer")
+        self._addcode("\tex      de,hl  ; store char number in e")
+        self._addcode("\tld      (hl),e")
+        self._addcode("\tinc     hl") 
+        self._addcode("\tld      (hl),&00")
+        self._addcode("\t;")
 
     def rtcall_CLS(self) -> None:
+        self._addcode("\t; CLS")
         self._addcode(f"\tcall    {FWCALL.TXT_CLEAR_WINDOW} ;TXT_CLEAR_WINDOW")
+        self._addcode("\t;")
 
     def rtcall_END(self) -> None:
+        self._addcode("\t; END")
         self._addcode("\tjp      0  ; reset")
+        self._addcode("\t;")
 
     def rtcall_HEXS(self) -> None:
+        self._addcode("\t; HEX$")
         self._addlibfunc(STRLIB, "strlib_int2hex")
         # the second parameters is ignored right now
         self._addcode("\tld      a,l    ; number of characters only 2 or 4 are supported")
         self._addcode("\tpop     de     ; number to convert")
         self._addcode("\tpop     hl     ; destination buffer")
         self._addcode("\tcall    strlib_int2hex")
+        self._addcode("\t;")
 
     def rtcall_INKEYS(self) -> None:
+        self._addcode("\t; INKEY$")
         self._addcode(f"\tcall    {FWCALL.KM_READ_CHAR} ;KM_READ_CHAR")
         self._addcode("\tjr      c,$+3  ; if not character then A=0")
         self._addcode("\txor     a")
@@ -210,83 +228,115 @@ class Z80Backend:
         self._addcode("\tld      (hl),a")
         self._addcode("\tinc     hl")
         self._addcode("\tld      (hl),&00")
+        self._addcode("\t;")
 
     def rtcall_INPUT(self) -> None:
+        self._addcode("\t; INPUT")
         if self._addlibfunc(INPUTLIB, "inputlib_input"):
             self.emitdata('__inputlib_question: db "?"," ",&0')
             self.emitdata('__inputlib_redo: db "?Redo from start",&0')
             self.emitdata('__inputlib_inbuf: defs 256')
         self._addcode("\tcall    inputlib_input")
         self._addcode("\tld      de,__inputlib_inbuf")
+        self._addcode("\t;")
 
     def rtcall_INPUT_INT(self) -> None:
+        self._addcode("\t; INPUT_INT")
         self._addlibfunc(STRLIB, "strlib_dropspaces")
         self._addlibfunc(STRLIB, "strlib_str2int")
         self._addcode("\tcall    strlib_dropspaces")
         self._addcode("\tcall    strlib_str2int")
+        self._addcode("\t;")
 
     def rtcall_INPUT_REAL(self) -> None:
+        self._addcode("\t; INPUT_REAL")
         self._addlibfunc(STRLIB, "strlib_dropspaces")
         self._addcode("\tcall    strlib_dropspaces")
         self.abort("INPUT does not support REAL variables yet")
+        self._addcode("\t;")
 
     def rtcall_INPUT_STR(self) -> None:
+        self._addcode("\t; INPUT_STR")
         self._addlibfunc(STRLIB, "strlib_dropspaces")
         self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tcall    strlib_dropspaces")
         self._addcode("\tcall    strlib_strcopy")
+        self._addcode("\t;")
 
     def rtcall_MODE(self) -> None:
+        self._addcode("\t; MODE")
         self._addcode("\tpush    af")
         self._addcode("\tld      a,l")
         self._addcode(f"\tcall    {FWCALL.SCR_SET_MODE} ;SCR_SET_MODE")
         self._addcode("\tpop     af")
+        self._addcode("\t;")
 
     def rtcall_PEEK(self) -> None:
         # HL contains the memory we want to read
+        self._addcode("\t; PEEK")
         self._addcode("\tld      a,(hl)")
         self._addcode("\tpop     hl")
         self._addcode("\tld      (hl),a")
+        self._addcode("\t;")
 
     def rtcall_PRINT(self) -> None:
+        self._addcode("\t; PRINT")
         self._addlibfunc(STRLIB, "strlib_print_str")
         self._addcode("\tcall    strlib_print_str")
+        self._addcode("\t;")
 
     def rtcall_PRINT_INT(self) -> None:
+        self._addcode("\t; PRINT_INT")
         self._addlibfunc(MATHLIB, "div16_hlby10")
         if self._addlibfunc(STRLIB, "strlib_int2str"):
             self.emitdata('__strlib_int2str_conv: defs 7')
         self._addcode("\tcall    strlib_int2str")
+        self._addcode("\t;")
         self.rtcall_PRINT()
+        
 
     def rtcall_PRINT_LN(self) -> None:
+        self._addcode("\t; PRINT_LN")
         self._addlibfunc(STRLIB, "strlib_print_nl")
         self._addcode("\tcall    strlib_print_nl")
+        self._addcode("\t;")
 
     def rtcall_PRINT_QM(self) -> None:
         """ print a question mark and a space """
+        self._addcode("\t; PRINT_QM")
         self._addcode("\tld      hl,__inputlib_question")
         self.rtcall_PRINT()
+        self._addcode("\t;")
 
     def rtcall_PRINT_REAL(self) -> None:
+        self._addcode("\t; PRINT_REAL")
         self.abort("PRINT does not support REAL expressions yet")
+        self._addcode("\t;")
 
     def rtcall_PRINT_SPC(self) -> None:
+        self._addcode("\t; PRINT_SPC")
         self._addlibfunc(STRLIB, "strlib_print_spc")
         self._addcode("\tcall    strlib_print_spc")
+        self._addcode("\t;")
 
     def rtcall_REALCOPY(self) -> None:
+        self._addcode("\t; REALCOPY")
         self._addcode("\tpop     de")
         self._addcode("\tex      de,hl")
         self._addcode("\tld      bc,5")
         self._addcode("\tldir")
+        self._addcode("\t;")
 
     def rtcall_STRCOMP(self) -> None:
+        self._addcode("\t; STRCOMP")
         self._addlibfunc(STRLIB, "strlib_comp")
         self._addcode("\tpop     de")
         self._addcode("\tcall    strlib_strcomp")
+        self._addcode("\t;")
 
     def rtcall_STRCOPY(self) -> None:
+        self._addcode("\t; STRCOPY")
         self._addlibfunc(STRLIB, "strlib_copy")
         self._addcode("\tpop     de")
         self._addcode("\tcall    strlib_strcopy")
+        self._addcode("\t;")

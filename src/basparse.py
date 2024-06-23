@@ -91,15 +91,15 @@ class BASParser:
     def symtab_name2type(self, symname: str) -> Tuple[str, BASTypes]:
         """ Lets enforce variable types """
         forcedtype = BASTypes.NONE
-        symname = 'var' + symname.lower()
+        symname = 'var_' + symname.lower()
         if symname.endswith('$'):
-            symname = symname.replace('$', 'tstr')
+            symname = symname.replace('$', '_str')
             forcedtype = BASTypes.STR
         elif symname.endswith('!'):
-            symname = symname.replace('!', 'treal')
+            symname = symname.replace('!', '_real')
             forcedtype = BASTypes.REAL
         elif symname.endswith('%'): 
-            symname = symname.replace('%', 'tint')
+            symname = symname.replace('%', '_int')
             forcedtype = BASTypes.INT
         return symname, forcedtype
         
@@ -140,7 +140,7 @@ class BASParser:
         return entry
 
     def symtab_newtmplabel(self, srcline: int) -> Optional[Symbol]:
-        sname = f"labeltmp{self.temp_vars:03d}"
+        sname = f"label_{self.temp_vars:03d}"
         entry = self.symtab_addlabel(sname, srcline)
         if entry is not None:
             entry.temporal = True
@@ -266,6 +266,9 @@ class BASParser:
         else:
             keyword_rule()
 
+    #
+    # BASIC Build-in Commands and Functions rules
+    #
 
     def function_AT(self) -> None:
         """ <function_AT> := @<ident_factor> """
@@ -277,6 +280,30 @@ class BASParser:
             self.cur_expr.pushop(atop)
         else:
             self.error(atop.srcline, ErrorCode.SYNTAX)
+
+    def function_CHRS(self) -> None:
+        """ <function_CHRS> := CHR$(<arg_int>) """
+        assert self.cur_token is not None
+        self.next_token()
+        if not self.match_current(TokenType.LPAR):
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+            return
+        self.next_token()
+        sym = self.symtab_newtmpvar(Expression.string(""))
+        if sym is not None:
+            args: List[Expression] = []
+            self.push_curexpr()
+            self.arg_int()
+            args.append(self.cur_expr)
+            self.pop_curexpr()
+            self.emitter.rtcall('CHRS', args, sym)
+            sym.inc_writes()
+            tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
+            self.cur_expr.pushval(tmpident, BASTypes.STR)
+            if not self.match_current(TokenType.RPAR):
+                self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+                return
+            self.next_token()
 
     def command_CLS(self) -> None:
         """ <command_CLS> := CLS <arg_channel> """
@@ -494,7 +521,7 @@ class BASParser:
                 self.block_stack.append(cblock)
                 self.error(self.cur_token.srcline, ErrorCode.NEXT)
                 return
-            assert cblock.blockinfo is not None
+            assert cblock.blockinfo and cblock.startlabel and cblock.endlabel is not None
             start, limit, step = cblock.blockinfo
             self.emitter.next(start, limit, step, cblock.startlabel, cblock.endlabel)
             if self.match_current(TokenType.IDENT):
@@ -531,21 +558,21 @@ class BASParser:
             self.next_token()
 
     def command_PRINT(self) -> None:
-        """ <command_PRINT> := PRINT <arg_channel> <list_printables>"""
+        """ <command_PRINT> := PRINT <arg_channel> <arg_print_list>"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
         self.next_token()
         self.arg_channel()
         cblock = CodeBlock(CodeBlockType.PRINT, None, None)
         self.block_stack.append(cblock)
-        self.list_printables()
+        self.arg_print_list()
         self.block_stack.pop()
 
     def command_SPC(self) -> None:
         """ <command_SPC> := SPC(<arg_int>)"""
         assert self.cur_token is not None
         if len(self.block_stack) == 0 or self.block_stack[-1].type != CodeBlockType.PRINT:
-            self.error(ErrorCode.SYNTAX)
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
             return
         self.next_token()
         if not self.match_current(TokenType.LPAR):
@@ -602,14 +629,16 @@ class BASParser:
                 self.error(line, ErrorCode.WEND)
                 self.block_stack.append(cblock)
                 return
-    
+            assert cblock.startlabel and cblock.endlabel is not None
             self.emitter.goto(cblock.startlabel.symbol)
             self.emitter.label(cblock.endlabel.symbol)
             self.next_token()
         else:
             self.error(line, ErrorCode.WEND)
 
-    # Argument rules
+    #
+    # Command and Function Argument rules
+    #
 
     def arg_int(self) -> None:
         """<arg_int> = <expression>.t == INT"""
@@ -659,13 +688,14 @@ class BASParser:
             self.pop_curexpr()
         self.emitter.rtcall('CHANNEL_SET', channel)
 
-    def list_printables(self) -> None:
-        """ <list_printables> := <expresion>[(;|,)<expresion>*]"""
+    def arg_print_list(self) -> None:
+        """ <arg_print_list> := <expresion>[(;|,)<expresion>*]"""
         assert self.cur_token is not None
         line = self.cur_token.srcline
         allowedcmd = [TokenType.SPC, TokenType.TAB]
         while self.cur_token.type in allowedcmd:
             cmd_rule = getattr(self, "command_" + self.cur_token.text, None)
+            assert cmd_rule is not None
             cmd_rule()
         self.expression()
         while not self.cur_expr.is_empty():
@@ -692,11 +722,14 @@ class BASParser:
                 break
             while self.cur_token.type in allowedcmd:
                 cmd_rule = getattr(self, "command_" + self.cur_token.text, None)
+                assert cmd_rule is not None
                 cmd_rule()
             self.expression()    
         self.emitter.rtcall('PRINT_LN')
     
+    #
     # Expression rules
+    #
 
     def expression(self) -> None:
         """ <expression> ::= <or_term> [XOR <expression>] """

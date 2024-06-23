@@ -493,7 +493,7 @@ class Symbol:
         return self.puts == 1 and self.is_ident() and len(self.value) == 1
 
     def is_tmp(self) -> bool:
-        return self.symbol.startswith('vartmp')
+        return self.symbol.startswith('var_tmp')
 
     def inc_reads(self):
         """ To control the number of times the symbol value is used """
@@ -556,7 +556,7 @@ class CodeBlock:
     WHILE <expression> <codeblock> WEND
     IF <condition> THEN <codeblock> [ELSE <codeblock>] IFEND
     """
-    def __init__(self, type: CodeBlockType, startlabel: Symbol, endlabel: Symbol) -> None:
+    def __init__(self, type: CodeBlockType, startlabel: Optional[Symbol], endlabel: Optional[Symbol]) -> None:
         self.type = type
         self.startlabel = startlabel
         self.endlabel = endlabel
