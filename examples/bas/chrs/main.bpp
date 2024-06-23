@@ -1,7 +1,0 @@
-10 ' CHR$ Example of use
-20 mode 2
-30 for x=32 to 255
-40 print x;" ";chr$(x);" ";
-50 next
-60 loop:
-70 goto loop
