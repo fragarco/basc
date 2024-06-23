@@ -270,6 +270,30 @@ class BASParser:
     # BASIC Build-in Commands and Functions rules
     #
 
+    def function_ASC(self) -> None:
+        """ <function_ASC> := ASC(<arg_int>) """
+        assert self.cur_token is not None
+        self.next_token()
+        if not self.match_current(TokenType.LPAR):
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+            return
+        self.next_token()
+        sym = self.symtab_newtmpvar(Expression.int('0'))
+        if sym is not None:
+            args: List[Expression] = []
+            self.push_curexpr()
+            self.arg_str()
+            args.append(self.cur_expr)
+            self.pop_curexpr()
+            self.emitter.rtcall('ASC', args, sym)
+            sym.inc_writes()
+            tmpident = Token(sym.symbol, TokenType.IDENT, self.cur_token.srcline)
+            self.cur_expr.pushval(tmpident, BASTypes.INT)
+            if not self.match_current(TokenType.RPAR):
+                self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+                return
+            self.next_token()
+
     def function_AT(self) -> None:
         """ <function_AT> := @<ident_factor> """
         assert self.cur_token is not None

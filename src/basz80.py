@@ -180,6 +180,13 @@ class Z80Backend:
 
     # BASIC commands and functions
 
+    def rtcall_ASC(self) -> None:
+        self._addcode("\t; ASC")
+        self._addcode("\tpop     de      ; destination int var")
+        self._addcode("\tld      a,(hl)  ; get first char")
+        self._addcode("\tld      (de),a")
+        self._addcode("\t;")
+
     def rtcall_CHANNEL_SET(self) -> None:
         # 0-7 keyboard to screen
         # 8   keyboard to printer
