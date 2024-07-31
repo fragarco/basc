@@ -9,5 +9,5 @@ FOR x=2 TO 25
     PRINT "Hello World!"
 NEXT
 CLS
-y=10
+y=y-1
 GOTO main

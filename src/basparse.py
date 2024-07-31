@@ -225,7 +225,7 @@ class BASParser:
               self.statements()
 
     def statement(self) -> None:
-        """  <statement> = ID '=' <expression> | <keyword>"""
+        """  <statement> = IDENT '=' <expression> | <keyword>"""
         assert self.cur_token is not None
         self.reset_curexpr()
         if self.match_current(TokenType.IDENT):
@@ -498,7 +498,7 @@ class BASParser:
                     self.emitter.rtcall('INPUT_STR', [var])
     
     def command_GOTO(self) -> None:
-        """ <command_GOTO> := GOTO (NUMBER | LABEL)"""
+        """ <command_GOTO> := GOTO (NUMBER | IDENT)"""
         assert self.cur_token is not None
         # if the label doesn't exit, the assembler will fail
         # this allow us to jump to a forward label/line
@@ -549,7 +549,7 @@ class BASParser:
 
     def command_LABEL(self) -> None:
         """
-        <command_LABEL> := LABEL ID 
+        <command_LABEL> := LABEL IDENT 
         This is an addition we can find in Locomotive BASIC v2 to define jump etiquettes
         """
         assert self.cur_token is not None
@@ -562,6 +562,24 @@ class BASParser:
         else:
             self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
+    def command_LOCATE(self) -> None:
+        """ <command_LOCATE> := LOCATE <arg_int>, <arg<int> """
+        assert self.cur_token is not None
+        self.next_token()
+        args: List[Expression] = []
+        self.reset_curexpr()
+        self.arg_int()
+        args.append(self.cur_expr)
+        if self.match_current(TokenType.COMMA):
+            self.next_token()
+            self.reset_curexpr()
+            self.arg_int()
+            args.append(self.cur_expr)
+            self.reset_curexpr()
+            self.emitter.rtcall('LOCATE', args)
+        else:
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+        
     def function_PEEK(self) -> None:
         """ <function_PEEK> := PEEK(<arg_int>) """
         assert self.cur_token is not None
