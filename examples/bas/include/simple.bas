@@ -1,2 +1,2 @@
-cls
-print "Fichero incluido"
+CLS
+PRINT "code from another file!"

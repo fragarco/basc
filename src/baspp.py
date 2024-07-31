@@ -30,7 +30,7 @@ class BASPreprocessor:
             print(f"Fatal error in {file}:{iline}: {sline.strip()} -> {message}")
         sys.exit(1)
 
-    def _insert_file(self, iline: int, line: str, lines: List[Tuple[str, int, str]]) -> Any:
+    def _insert_file(self, basedir, iline: int, line: str, lines: List[Tuple[str, int, str]]) -> Any:
         relpath = re.search(r'(?<=")(.*)(?=")', line)
         if relpath is None:
             self.abort(
@@ -48,7 +48,7 @@ class BASPreprocessor:
                     lines[iline][1],
                     lines[iline][2]
                 )
-            infile = os.path.join(os.getcwd(), relpath.group(0))
+            infile = os.path.join(basedir, relpath.group(0))
             try:
                 print("Including BAS file", infile)
                 with open(infile, 'r') as f:
@@ -76,7 +76,8 @@ class BASPreprocessor:
                     line = line.strip()
                     if "INCBAS " == line[0:7].upper():
                         # insert content from another BAS file
-                        srclines = self._insert_file(srcline, line, srclines)
+                        basedir = os.path.dirname(inputfile)
+                        srclines = self._insert_file(basedir, srcline, line, srclines)
                         srcline = srcline + 1
                     elif line != "":
                         line = str(autonum) + ' ' + line

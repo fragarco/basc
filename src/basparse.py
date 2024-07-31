@@ -198,7 +198,7 @@ class BASParser:
             self.lines()
 
     def line(self) -> None:
-        """ <line> := INTEGER NEWLINE | INTEGER ID: NEWLINE | INTEGER <statements> NEWLINE"""
+        """ <line> := INTEGER NEWLINE | INTEGER <statements> NEWLINE"""
         assert self.cur_token is not None
         if self.match_current(TokenType.INTEGER):
             self.emitter.remark(self.get_curcode())
@@ -207,16 +207,6 @@ class BASParser:
             if self.match_current(TokenType.NEWLINE):
                 # This was a full line remark (' or REM) removed by the lexer
                 self.next_token()
-            elif self.match_current(TokenType.IDENT) and self.match_next(TokenType.COLON):
-                # Label that can be used by GOTO, THEN, GOSUB, etc.
-                self.symtab_addlabel(self.cur_token.text, self.cur_token.srcline)
-                self.emitter.label(self.cur_token.text)
-                self.next_token()
-                self.next_token()
-                if self.match_current(TokenType.NEWLINE):
-                    self.next_token()
-                else:
-                    self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
             else:
                 self.statements()
                 if self.match_current(TokenType.NEWLINE):
@@ -556,6 +546,21 @@ class BASParser:
                     self.block_stack.append(cblock)
                 else:
                     self.next_token()
+
+    def command_LABEL(self) -> None:
+        """
+        <command_LABEL> := LABEL ID 
+        This is an addition we can find in Locomotive BASIC v2 to define jump etiquettes
+        """
+        assert self.cur_token is not None
+        self.next_token()
+        if self.match_current(TokenType.IDENT):
+            # Label that can be used by GOTO, THEN, GOSUB, etc.
+            self.symtab_addlabel(self.cur_token.text, self.cur_token.srcline)
+            self.emitter.label(self.cur_token.text)
+            self.next_token()
+        else:
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
     def function_PEEK(self) -> None:
         """ <function_PEEK> := PEEK(<arg_int>) """

@@ -4,7 +4,7 @@
 CLS
 PRINT "Select Yes or No (Y/N)?"
 tries = 0
-mainloop:
+LABEL mainloop
     a$=INKEY$
     IF a$="" THEN mainloop
     IF a$="y" OR a$="Y" THEN endyes
@@ -13,13 +13,13 @@ mainloop:
     tries = tries + 1
     GOTO mainloop
 
-endyes:
+LABEL endyes
     PRINT "You have selected YES ";
     PRINT "after ";tries;" tries"
     tries = 0
     GOTO mainloop
 
-endno:
+LABEL endno
     PRINT "You have selected NO ";
     PRINT "after ";tries;" tries"
     tries = 0
