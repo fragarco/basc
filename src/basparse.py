@@ -383,6 +383,29 @@ class BASParser:
         else:
             self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
 
+    def command_FRAME(self) -> None:
+        """ <command_FRAME> := FRAME """
+        self.emitter.rtcall('FRAME')
+        self.next_token()
+
+    def command_GOTO(self) -> None:
+        """ <command_GOTO> := GOTO (NUMBER | IDENT)"""
+        assert self.cur_token is not None
+        # if the label doesn't exit, the assembler will fail
+        # this allow us to jump to a forward label/line
+        line = self.cur_token.srcline
+        self.next_token()
+        if self.match_current(TokenType.INTEGER):
+            # jump to a line number
+            label = self.get_linelabel(self.cur_token.text)
+            self.emitter.goto(label)
+            self.next_token()
+        elif self.match_current(TokenType.IDENT):
+            self.emitter.goto(self.cur_token.text)
+            self.next_token()
+        else:
+            self.error(line, ErrorCode.SYNTAX)
+
     def function_HEXS(self) -> None:
         """ <function_HEXS> := HEX$(<arg_int> [,<arg_int>])"""
         assert self.cur_token is not None
@@ -497,23 +520,6 @@ class BASParser:
                 else:
                     self.emitter.rtcall('INPUT_STR', [var])
     
-    def command_GOTO(self) -> None:
-        """ <command_GOTO> := GOTO (NUMBER | IDENT)"""
-        assert self.cur_token is not None
-        # if the label doesn't exit, the assembler will fail
-        # this allow us to jump to a forward label/line
-        line = self.cur_token.srcline
-        self.next_token()
-        if self.match_current(TokenType.INTEGER):
-            # jump to a line number
-            label = self.get_linelabel(self.cur_token.text)
-            self.emitter.goto(label)
-            self.next_token()
-        elif self.match_current(TokenType.IDENT):
-            self.emitter.goto(self.cur_token.text)
-            self.next_token()
-        else:
-            self.error(line, ErrorCode.SYNTAX)
 
     def command_MODE(self) -> None:
         """ <command_MODE> := MODE <arg_int> """

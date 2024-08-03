@@ -216,6 +216,11 @@ class Z80Backend:
         self._addcode("\tjp      0  ; reset")
         self._addcode("\t;")
 
+    def rtcall_FRAME(self) -> None:
+        self._addcode("\t; FRAME")
+        self._addcode("\tcall    &BD19 ; MC_WAIT_FLYBACK / WAIT VSYNC")
+        self._addcode("\t;")
+
     def rtcall_HEXS(self) -> None:
         self._addcode("\t; HEX$")
         self._addlibfunc(STRLIB, "strlib_int2hex")
