@@ -1,9 +1,9 @@
 ' CHR$ Example of use
 
-mode 2
-for x=32 to 255
-    print x;" ";chr$(x);" ";
-next
+MODE 2
+FOR x=32 TO 255
+    PRINT x;" ";CHR$(x);" ";
+NEXT
 
-loop:
-    goto loop
+LABEL loop
+    GOTO loop
