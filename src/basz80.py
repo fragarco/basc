@@ -187,6 +187,14 @@ class Z80Backend:
         self._addcode("\tld      (de),a")
         self._addcode("\t;")
 
+    def rtcall_BORDER(self) -> None:
+        self._addcode("\t; BORDER")
+        self._addcode("\tld      c,l     ; second color")
+        self._addcode("\tpop     de")
+        self._addcode("\tld      b,e     ; first color")
+        self._addcode(f"\tcall    {FWCALL.SCR_SET_BORDER} ;SCR_SET_BORDER")
+        self._addcode("\t;")
+
     def rtcall_CHANNEL_SET(self) -> None:
         # 0-7 keyboard to screen
         # 8   keyboard to printer

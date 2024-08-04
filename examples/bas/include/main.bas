@@ -1,4 +1,5 @@
 ' Simple example of incbas usage
+
 MODE 1
 INCBAS "simple.bas"
 y=10

@@ -295,6 +295,25 @@ class BASParser:
         else:
             self.error(atop.srcline, ErrorCode.SYNTAX)
 
+    def command_BORDER(self) -> None:
+        """ <command_BORDER> := BORDER <arg_int>[,<arg_int>] """
+        assert self.cur_token is not None
+        self.next_token()
+        self.reset_curexpr()
+        args: List[Expression] = []
+        self.arg_int()
+        args.append(self.cur_expr)
+        if self.match_current(TokenType.COMMA):
+            self.next_token()
+            self.reset_curexpr()
+            self.arg_int()
+            args.append(self.cur_expr)
+        else:
+            # If there is no second color, the first one must
+            # appear twice to avoid the blinking 
+            args.append(self.cur_expr)
+        self.emitter.rtcall('BORDER', args)
+
     def function_CHRS(self) -> None:
         """ <function_CHRS> := CHR$(<arg_int>) """
         assert self.cur_token is not None
