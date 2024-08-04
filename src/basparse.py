@@ -604,7 +604,20 @@ class BASParser:
             self.emitter.rtcall('LOCATE', args)
         else:
             self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
-        
+    
+    def command_PAPER(self) -> None:
+        """ <command_PAPER> := [#<arg_channel>,]<int_arg> """
+        assert self.cur_token is not None
+        self.next_token()
+        self.arg_channel()
+        if self.match_current(TokenType.COMMA):
+            self.next_token()
+        self.reset_curexpr()
+        args: List[Expression] = []
+        self.arg_int()
+        args.append(self.cur_expr)
+        self.emitter.rtcall('PAPER', args)
+    
     def function_PEEK(self) -> None:
         """ <function_PEEK> := PEEK(<arg_int>) """
         assert self.cur_token is not None
@@ -628,6 +641,19 @@ class BASParser:
                 self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
                 return
             self.next_token()
+
+    def command_PEN(self) -> None:
+        """ <command_PEN> := [#<arg_channel>,]<int_arg> """
+        assert self.cur_token is not None
+        self.next_token()
+        self.arg_channel()
+        if self.match_current(TokenType.COMMA):
+            self.next_token()
+        self.reset_curexpr()
+        args: List[Expression] = []
+        self.arg_int()
+        args.append(self.cur_expr)
+        self.emitter.rtcall('PEN', args)
 
     def command_PRINT(self) -> None:
         """ <command_PRINT> := PRINT <arg_channel> <arg_print_list>"""

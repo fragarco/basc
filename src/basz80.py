@@ -298,12 +298,24 @@ class Z80Backend:
         self._addcode(f"\tcall    {FWCALL.TXT_SET_CURSOR} ;TXT_SET_CURSOR")
         self._addcode("\t;")
 
+    def rtcall_PAPER(self) -> None:
+        self._addcode("\t; PAPER")
+        self._addcode("\tld      a,l     ; color")
+        self._addcode(f"\tcall    {FWCALL.TXT_SET_PAPER} ;TXT_SET_PAPER")
+        self._addcode("\t;")
+
     def rtcall_PEEK(self) -> None:
         # HL contains the memory we want to read
         self._addcode("\t; PEEK")
         self._addcode("\tld      a,(hl)")
         self._addcode("\tpop     hl")
         self._addcode("\tld      (hl),a")
+        self._addcode("\t;")
+
+    def rtcall_PEN(self) -> None:
+        self._addcode("\t; PEN")
+        self._addcode("\tld      a,l     ; color")
+        self._addcode(f"\tcall    {FWCALL.TXT_SET_PEN} ;TXT_SET_PEN")
         self._addcode("\t;")
 
     def rtcall_PRINT(self) -> None:
