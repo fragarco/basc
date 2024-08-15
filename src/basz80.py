@@ -239,6 +239,16 @@ class Z80Backend:
         self._addcode("\tcall    strlib_int2hex")
         self._addcode("\t;")
 
+    def rtcall_INK(self) -> None:
+        self._addcode("\t; INK")
+        self._addcode("\tld      c,l     ; second color")
+        self._addcode("\tpop     de")
+        self._addcode("\tld      b,e     ; first color")
+        self._addcode("\tpop     de")
+        self._addcode("\tld      a,e     ; pen")
+        self._addcode(f"\tcall    {FWCALL.SCR_SET_INK} ;SCR_SET_INK")
+        self._addcode("\t;")
+
     def rtcall_INKEYS(self) -> None:
         self._addcode("\t; INKEY$")
         self._addcode(f"\tcall    {FWCALL.KM_READ_CHAR} ;KM_READ_CHAR")

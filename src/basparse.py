@@ -481,6 +481,32 @@ class BASParser:
                     self.command_GOTO()
             self.emitter.label(endif.symbol)
 
+    def command_INK(self) -> None:
+        """ <command_INK> := INK <arg_int>,<arg_int>[,<arg_int>] """
+        assert self.cur_token is not None
+        self.next_token()
+        self.reset_curexpr()
+        args: List[Expression] = []
+        self.arg_int()
+        args.append(self.cur_expr)
+        if self.match_current(TokenType.COMMA):
+            self.next_token()
+            self.reset_curexpr()
+            self.arg_int()
+            args.append(self.cur_expr)
+            if self.match_current(TokenType.COMMA):
+                self.next_token()
+                self.reset_curexpr()
+                self.arg_int()
+                args.append(self.cur_expr)
+            else:
+                # If there is no second color, the first one must
+                # appear twice to avoid the blinking 
+                args.append(self.cur_expr)
+            self.emitter.rtcall('INK', args)
+        else:
+            self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
+
     def function_INKEYS(self) -> None:
         """ <function_INKEYS> := INKEY$ """
         # no need of pushing current expression as this function has not
