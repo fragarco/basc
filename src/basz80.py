@@ -389,3 +389,13 @@ class Z80Backend:
         self._addcode("\tpop     de")
         self._addcode("\tcall    strlib_strcopy")
         self._addcode("\t;")
+
+    def rtcall_STRCAT(self) -> None:
+        self._addcode("\t; STRCAT")
+        self._addlibfunc(STRLIB, "strlib_len")
+        self._addlibfunc(STRLIB, "strlib_copy")
+        self._addlibfunc(STRLIB, "strlib_cat")
+        self._addcode("\tpop     de")
+        self._addcode("\tex      de,hl")
+        self._addcode("\tcall    strlib_strcat")
+        self._addcode("\t;")

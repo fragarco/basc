@@ -557,19 +557,51 @@ STRLIB = {
         "\tcp      &20     ; white space\n",
         "\tret     nz\n",
         "\tinc     de\n",
-        "\tjr      strlib_dropspaces\n"
+        "\tjr      strlib_dropspaces\n\n"
     ],
     "strlib_copy": [
         "; HL = destination\n",
         "; DE = origin\n",
+        "; Strings length is limited to 255 characters\n",
         "strlib_strcopy:\n",
+        "\tld      b,0        ; total copied characters\n",
+        "strlib_strcopy_loop:\n",
+        "\tld      a,254\n",
+        "\tcp      b\n",
+        "\tjr      z,strlib_strcopy_end:\n",
+        "\tinc     b\n",
         "\tld      a,(de)\n",
         "\tld      (hl),a\n",
         "\tinc     hl\n",
         "\tinc     de\n",
         "\tor      a\n",
-        "\tjr      nz,strlib_strcopy\n",
+        "\tjr      nz,strlib_strcopy_loop\n",
+        "strlib_strcopy_end:\n",
         "\tret\n\n",
+    ],
+    "strlib_len": [
+        "; HL = string\n",
+        "; B = total number of valid characters\n",
+        "; HL ends pointing to the null string character\n"
+        "strlib_strlen:\n",
+        "\tld       b,0\n",
+        "strlib_strlen_loop:\n",
+        "\tld       a,(HL)\n",
+        "\tor       a\n",
+        "\tjr       z,strlib_strlen_end\n",
+        "\tinc      b\n",
+        "\tinc      hl\n",
+        "\tjr       strlib_strlen_loop\n",
+        "strlib_strlen_end:\n",
+        "\tret\n\n",
+    ],
+    "strlib_cat": [
+        "; HL = destination\n",
+        "; DE = string to cat\n",
+        "; cat DE into HL with a limit of 255 characters in total\n"
+        "strlib_strcat:\n",
+        "\tcall     strlib_strlen\n",
+        "\tcall     strlib_strcopy_loop\n\n",
     ],
     "strlib_comp": [
         "; HL = second string start\n",
@@ -589,7 +621,7 @@ STRLIB = {
         "\tret\n",
         "__strlib_strcomp_false:\n"
         "\tld      hl,0    ; HL = 0 (false) they are different\n", 
-        "\tret\n"
+        "\tret\n\n"
     ],
     "strlib_int2str": [
         "; HL = starts with the number to convert to string\n",
