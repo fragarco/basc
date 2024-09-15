@@ -737,17 +737,11 @@ class AmsdosHead:
         self.update_checksum()
 
     def dump(self):
-        print("AMSDOS header:")
-        print(" User ID:", self.user)
-        print(" File:", self.file_name.decode('utf-8') + '.' + self.file_ext.decode('utf-8'))
-        print(" File type:", self.file_type)
-        print(" File size:", self.file_size)
-        print(" Load address:", hex(self.addr_load))
-        print(" Exec address:", hex(self.addr_entry))
-        print(" Data address:", hex(self.addr_data))
-        print(" Checksum:", self.checksum)
-
-
+        print("[dsk] AMSDOS header:")
+        print(f"  File: {self.file_name.decode('utf-8') + '.' + self.file_ext.decode('utf-8')}")
+        print(f"  File type: {self.file_type} File size: {self.file_size} User ID: {self.user}")
+        print(f"  Load address: {hex(self.addr_load)} Exec address: {hex(self.addr_entry)}")
+        print(f"  Data address: {hex(self.addr_data)} Checksum: {self.checksum}")
 
 def run_new(args, disk):
     print("[dsk] creating", args.dskfile)
@@ -758,7 +752,6 @@ def run_check(args,disk):
             sys.exit(1)
     try:
         disk.check()
-        print("[dsk]", args.dskfile, "format seems correct")
     except FormatError as e:
         print("[dsk] unsupported DSK format:", e.message)
         sys.exit(1)
@@ -843,8 +836,28 @@ def run_read_input_file(inputfile):
         print("[dsk] error reading file:", inputfile)
         sys.exit(1)
 
+def run_read_mapfile(mapfile):
+    print("[dsk] reading map file", mapfile)
+    try:
+        with open(mapfile, 'r') as fd:
+            content = str.join('', fd.readlines())
+            return eval(content)
+    except IOError:
+        print("[dsk] error reading file:", mapfile)
+        sys.exit(1)
+
+def run_get_start(startaddr, mapfile):
+    try:
+        addr = aux_int(startaddr)
+        return addr
+    except:
+        startaddr = startaddr.upper()
+        if startaddr in mapfile:
+            return mapfile[startaddr][0]
+        print("[dsk] invalid start address value")
+        sys.exit(1)
+
 def run_put_file(infile, dskfile, disk, content):
-    print ("[dsk] writting", len(content), "bytes")
     dirtable = disk.get_dirtable()
     ientry = dirtable.can_allocate(len(content))
     if ientry == -1:
@@ -854,6 +867,7 @@ def run_put_file(infile, dskfile, disk, content):
     disk.set_dirtable(dirtable)
     disk.add_content(sectors, content)
     disk.write(dskfile)
+    print("[dsk] file added successfuly")
 
 def run_put_asciifile(args, disk):
     content = run_read_input_file(args.put_ascii)
@@ -879,11 +893,12 @@ def run_put_binfile(args, disk, infile, addheader):
             print('[dsk] AMSDOS header found, deleting it before generating a new one')
             content = content[128:]
     if addheader:
+        mapfile = {}
         header.build(infile, len(content))
+        if args.map_file != None: mapfile = run_read_mapfile(args.map_file)
         if args.load_addr != None: header.addr_load = args.load_addr
-        if args.start_addr != None: header.addr_entry = args.start_addr
+        if args.start_addr != None: header.addr_entry = run_get_start(args.start_addr, mapfile)
         header.update_checksum()
-        header.dump()
         content = bytearray(header.compose() + content)
     run_put_file(infile, args.dskfile, disk, content)
 
@@ -909,8 +924,14 @@ def process_args():
     parser.add_argument('--put-bin', type=str, help='Adds a new binary file to DSK file creating and appending an extra AMSDOS header.')
     parser.add_argument('--put-raw', type=str, help='Adds a new binary file to DSK file without creating an extra AMSDOS header.')
     parser.add_argument('--put-ascii', type=str, help='Adds a new ASCII file to DSK file. The file should not include an AMSDOS header.')
+    parser.add_argument('--map-file', type=str, help='Imports a map file with symbol names and addresses that can be referenced in the --start-addr option')
     parser.add_argument('--load-addr', type=aux_int, default=0x4000, help='Initial address to load the file (default 0x4000). Only used in binary files with appended AMSDOS headers.')
-    parser.add_argument('--start-addr', type=aux_int, default=0x4000, help='Call address after loading the file (default 0x4000). Only used in binary files with appended AMSDOS headers.')
+    parser.add_argument('--start-addr',
+                        type=str,
+                        default="0x4000",
+                        help='Call address (by default 0x4000).' +
+                             'the binary file must include an AMSDOS header. If a map file is imported a symbol name can be used')
+
     args = parser.parse_args()
     return args
 

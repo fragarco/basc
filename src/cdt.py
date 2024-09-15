@@ -3,11 +3,11 @@
 """
 CDT.PY by Javier Garcia
 
-Simple tool to add content to Amstrad CDT files.
+Simple tool to create and add content to Amstrad CDT files.
 INFO about the CDT file format can be read here:
 https://www.cpcwiki.eu/index.php/Format:CDT_tape_image_file_format
 
-Information about how information in stored in real tapes can be
+Details about how information in stored in real tapes can be
 found in the Firmware guide (chapter 8):
 https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual
 
@@ -641,7 +641,7 @@ class CDT:
             with open(outputfile, 'wb') as fd:
                 fd.write(content)
         except IOError:
-            print("[cdt] could not write file:", outputfile)
+            print("[cdt] error trying to create the file:", outputfile)
 
     def read(self, inputfile):
         content = bytearray()
@@ -751,7 +751,6 @@ def run_check(args, cdt):
     try:
         cdt.set(content)
         cdt.check()
-        print("[cdt]", args.cdtfile, "format seems compatible")
     except FormatError as e:
         print("[cdt] unsupported CDT format:", str(e))
         sys.exit(1)
@@ -760,6 +759,27 @@ def run_cat(args, cdt):
     run_check(args, cdt)
     cdt.dump()
 
+def run_read_mapfile(mapfile):
+    print("[cdt] reading map file", mapfile)
+    try:
+        with open(mapfile, 'r') as fd:
+            content = str.join('', fd.readlines())
+            return eval(content)
+    except IOError:
+        print("[cdt] error reading file:", mapfile)
+        sys.exit(1)
+
+def run_get_start(startaddr, mapfile):
+    try:
+        addr = aux_int(startaddr)
+        return addr
+    except:
+        startaddr = startaddr.upper()
+        if startaddr in mapfile:
+            return mapfile[startaddr][0]
+        print("[cdt] invalid start address value")
+        sys.exit(1)
+
 def run_put_file(filein, args, cdt, header):
     run_check(args, cdt)
     content = run_read_input_file(filein)
@@ -767,11 +787,17 @@ def run_put_file(filein, args, cdt, header):
         print("[cdt] max input file size is 64K")
         sys.exit(1)
     if header != None:
-        header.filename = args.name[0:16] if args.name != None else "UNNAMED"
-        header.addr_start = args.start_addr if args.load_addr != None else 0x4000
-        header.addr_load = args.load_addr if args.load_addr != None else 0x4000
+        mapfile = {}
+        header.filename = "UNNAMED"
+        header.addr_start = 0x4000
+        header.addr_load = 0x4000
+        if args.name != None: header.filename = args.name[0:16]
+        if args.map_file != None: mapfile = run_read_mapfile(args.map_file)
+        if args.start_addr != None: header.addr_start = run_get_start(args.start_addr, mapfile)
+        if args.load_addr != None: header.addr_load = args.load_addr
     cdt.add_file(content, header, 2000 if args.speed == 1 else 1000)
     cdt.write(args.cdtfile)
+    print("[cdt] file added successfuly")
 
 def run_put_asciifile(args, cdt):
     header = DataHeader()
@@ -811,8 +837,13 @@ def process_args():
     parser.add_argument('--put-bin', type=str, help='Adds a new binary/basic file to CDT file.')
     parser.add_argument('--put-ascii', type=str, help='Adds a new ASCII file to CDT file.')
     parser.add_argument('--put-raw', type=str, help='Adds the file directly inside a data block without any header.')
+    parser.add_argument('--map-file', type=str, help='Imports a map file with symbol names and addresses that can be referenced in the --start-addr option')
     parser.add_argument('--load-addr', type=aux_int, help='Initial address to load the file.')
-    parser.add_argument('--start-addr', type=aux_int, help='Call address after loading the file.')
+    parser.add_argument('--start-addr',
+                        type=str,
+                        default="0x4000",
+                        help='Call address (by default 0x4000).' +
+                             'the binary file must include an AMSDOS header. If a map file is imported a symbol name can be used')
     parser.add_argument('--name', type=str, help='Name that will be displayed when loading the binary/ascii file.')
     parser.add_argument('--speed', type=int, default=1, help='Write speed: 0 = 1000 bauds, 1 (default) = 2000 bauds.')
     args = parser.parse_args()

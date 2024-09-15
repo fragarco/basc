@@ -21,7 +21,7 @@ import baslex
 import basparse
 import basemit
 import basz80
-import basm
+import abasm
 
 def process_args():
     parser = argparse.ArgumentParser(
@@ -56,7 +56,7 @@ def main() -> None:
     asmout = args.out + '.asm'
     backend = basz80.Z80Backend()
     backend.save_output(asmout, emitter.code, parser.symbols)
-    basm.assemble(asmout)
+    abasm.assemble(asmout)
 
 
 if __name__ == "__main__":
