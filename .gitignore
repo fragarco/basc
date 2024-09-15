@@ -162,3 +162,14 @@ cython_debug/
 # custom personal directories
 extras/
 .vscode
+
+# basc intermediate files
+*.bpp
+*.irc
+*.asm
+*.bin
+*.lst
+*.map
+*.dsk
+*.cdt
+
