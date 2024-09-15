@@ -8,5 +8,5 @@ WHILE answer$ <> password$
 WEND
 PRINT "That is correct, access granted"
 
-endloop:
+LABEL endloop
     GOTO endloop

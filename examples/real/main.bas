@@ -8,5 +8,5 @@ FOR i=0 TO 4
     PRINT HEX$(PEEK(@a!+i), 2);
 NEXT
 
-LOOP:
+LABEL LOOP
     GOTO LOOP

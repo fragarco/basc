@@ -15,6 +15,6 @@ FOR i=1 to 10
 NEXT i
 PRINT " END!"
 
-loop:
+LABEL loop
     goto loop
 
