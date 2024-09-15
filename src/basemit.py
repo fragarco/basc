@@ -161,7 +161,7 @@ class SMEmitter:
     def operate_str(self, op: str) -> None:
         if   op == '=':
             self._emit(SMI.LIBCALL, 'STRCOMP')
-        if   op == '+':
+        elif op == '+':
             self._emit(SMI.LIBCALL, 'STRCAT')
         elif op == '<>':
             self._emit(SMI.LIBCALL, 'STRCOMP')
