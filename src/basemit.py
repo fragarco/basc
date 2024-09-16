@@ -162,7 +162,7 @@ class SMEmitter:
         if   op == '=':
             self._emit(SMI.LIBCALL, 'STRCOMP')
         elif op == '+':
-            self._emit(SMI.LIBCALL, 'STRCAT')
+            self._emit(SMI.LIBCALL, 'STRADD')
         elif op == '<>':
             self._emit(SMI.LIBCALL, 'STRCOMP')
             self._emit(SMI.INC)  # -1 TRUE / 0 FALSE + 1 = NON EQ

@@ -33,6 +33,7 @@ class Z80Backend:
         self.libcode: List[str] = ["\n","; LIBRARY AREA\n", "\n"]  # reusable and utility asm subroutines
         self.code: List[str] = []                                  # program code
         self.data: List[str] = ["\n","; DATA AREA\n", "\n"]        # data/constants declaration area    
+        self.straccum: int = 0
 
     def abort(self, message: str) -> None:
         print(f"Fatal error: {message}")
@@ -70,7 +71,7 @@ class Z80Backend:
         # is normalized so drop first bit and used it for sign
         mant = sign + mant[1:]
         real = bytearray(int(mant, 2).to_bytes(4, byteorder='little'))
-        real.extend(exp.to_bytes())
+        real.extend(exp.to_bytes(1, 'little'))
         return real
 
     def _emitrealsym(self, sym: Symbol) -> None:
@@ -82,6 +83,10 @@ class Z80Backend:
             code = code + f'&{b:02X},'
         # send code without last ','
         self.emitdata(code[:-1])
+
+    def _addstraccum(self) -> None:
+        self.emitdata(f'strlib_accum0: defs 256')
+        self.emitdata(f'strlib_accum1: defs 256')
 
     def _addcode(self, line: str) -> None:
         self.code.append(line + '\n')
@@ -399,3 +404,20 @@ class Z80Backend:
         self._addcode("\tex      de,hl")
         self._addcode("\tcall    strlib_strcat")
         self._addcode("\t;")
+
+    def rtcall_STRADD(self) -> None:
+        self._addcode("\t; STRADD")
+        self._addlibfunc(STRLIB, "strlib_len")
+        self._addlibfunc(STRLIB, "strlib_copy")
+        self._addlibfunc(STRLIB, "strlib_cat")
+        if self._addlibfunc(STRLIB, "strlib_add"):
+            self._addstraccum()
+        self._addcode("\tpush    hl")
+        self._addcode("\tld      ix,0")
+        self._addcode("\tadd     ix,sp")
+        self._addcode(f"\tld      hl,strlib_accum{self.straccum}")
+        self._addcode("\tcall    strlib_stradd")
+        self._addcode("\tpop     de   ; remove operand2 from stack")
+        self._addcode("\tpop     de   ; remove operand1 from stack")
+        self._addcode("\t;")
+        self.straccum = self.straccum + 1

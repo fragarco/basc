@@ -51,7 +51,7 @@ def main() -> None:
     if args.verbose:
         # InteRmediate Code
         with open(args.out + '.irc', 'w') as fo:
-            fo.writelines([f"{op} ({param})\n" for op, param, _ in emitter.code])
+            fo.writelines([f"{op}({param})\n" for op, param, _ in emitter.code])
 
     asmout = args.out + '.asm'
     backend = basz80.Z80Backend()

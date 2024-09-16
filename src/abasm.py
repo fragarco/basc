@@ -41,6 +41,10 @@ class AsmMacro:
 class AsmContext:
     def __init__(self):
         self.reset()
+        self.registernames = [
+            "A", "F", "B", "C", "D", "E", "H", "L",
+            "AF", "BC", "DE", "HL", "SP", "IX", "IY", "AF'"
+        ]
 
     def reset(self):
         self.outputfile = ""
@@ -58,7 +62,7 @@ class AsmContext:
         self.lstcode = ""
         self.macros = {}
         self.active_macro = None
-
+    
     def parse_logic_expr(self, expr):
         values = re.findall(r'\w+', expr)
         for i in range(0, len(values)):
@@ -127,10 +131,11 @@ class AsmContext:
                             # string literal used in some expressions
                             pass
                         else:
-                            abort("Error in expression " +
-                                arg +
-                                ": undefined symbol " +
-                                self.expand_symbol(testsymbol))
+                            sym = self.expand_symbol(testsymbol)
+                            errormsg = f"symbol {sym} is undefined"
+                            if sym.upper() in self.registernames:
+                                errormsg = f"unexpected register {sym}"
+                            abort(errormsg)
 
                     elif testsymbol[0] == '0' and len(testsymbol) > 2 and testsymbol[1] == 'b':
                         # binary literal
