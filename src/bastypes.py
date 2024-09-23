@@ -43,6 +43,7 @@ class ErrorCode:
     ARRAYDIM= "Array already dimensioned"
     DATAEX  = "DATA exhausted"
     ARGUMENT= "improper argument"
+    NOARG   = "missing argument"
     OVERFLOW= "Overflow"
     MEMFULL = "Memory full"
     INVDIR  = "Invalid direct command"

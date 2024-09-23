@@ -11,4 +11,4 @@ LOCATE 10,20
 PEN 3: PRINT CHR$(232)
 
 LABEL loop
-    GOTO loop
+     GOTO loop

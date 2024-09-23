@@ -376,6 +376,12 @@ SM2Z80 = {
         "sbc     hl,de",
         "jp      nc,$ARG1"
         ],
+    'RMEM': [
+        "defs    $ARG1"
+    ],
+    'FILLMEM': [
+        "db      $ARG1"
+    ],
     'SKIP': ["jp     $ARG1"]
 }
 

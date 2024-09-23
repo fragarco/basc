@@ -60,6 +60,11 @@ class BASParser:
         while not self.match_current(TokenType.NEWLINE):
             self.next_token()
 
+    def warning(self, srcline: int, message: str, extrainfo: str = "") -> None:
+        filename, linenum, line = self.lexer.get_srccode(srcline)
+        filename = os.path.basename(filename)
+        print(f"Warning in {filename}:{linenum}: {line.strip()} -> {message} {extrainfo}")
+
     def get_curcode(self) -> str:
         assert self.cur_token is not None
         _, _, line = self.lexer.get_srccode(self.cur_token.srcline)
@@ -82,6 +87,14 @@ class BASParser:
         """Advances the current token."""
         self.cur_token = self.peek_token
         self.peek_token = self.lexer.get_token()
+
+    def next_instruction(self) -> None:
+        """Advances the current token until it founds the end
+        of the current instruction (ie ':' RETURN or End of File)."""
+        while True:
+            if self.match_current(TokenType.COLON) or self.match_current(TokenType.NEWLINE) or self.match_current(TokenType.EOF):
+                return
+            self.next_token()
 
     def rollback_token(self) -> None:
         """ Goes back to the previous token."""
@@ -179,6 +192,7 @@ class BASParser:
         if self.errors:
             print(self.errors, "error(s) in total")
             sys.exit(1)
+        self.emitter.emitsymboltable()
 
     # Production rules.
 
@@ -344,6 +358,24 @@ class BASParser:
         self.next_token()
         self.arg_channel()
         self.emitter.rtcall('CLS')
+
+    def command_DEFINT(self) -> None:
+        """ <command_DEFINT> := DEFINT RANGE """
+        assert self.cur_token is not None
+        self.warning(self.cur_token.srcline, 'DEFINT has no effect, use variable sufixes instead')
+        self.next_instruction()
+
+    def command_DEFREAL(self) -> None:
+        """ <command_DEFREAL> := DEFREAL RANGE """
+        assert self.cur_token is not None
+        self.warning(self.cur_token.srcline, 'DEFREAL has no effect, use variable sufixes instead')
+        self.next_instruction()
+
+    def command_DEFSTR(self) -> None:
+        """ <command_DEFSTR> := DEFSTR RANGE """
+        assert self.cur_token is not None
+        self.warning(self.cur_token.srcline, 'DEFSTR has no effect, use variable sufixes instead')
+        self.next_instruction()
 
     def command_END(self) -> None:
         """ <command_END> := END """
@@ -713,6 +745,41 @@ class BASParser:
             self.error(self.cur_token.srcline, ErrorCode.SYNTAX)
             return
         self.next_token()
+
+    def command_SYMBOL(self) -> None:
+        """ <command_SYMBOL> := <command_SYMBOL_AFTER> | <int_factor>(,<int_factor>)x8 """
+        assert self.cur_token is not None
+        self.next_token()
+        if self.match_current(TokenType.AFTER):
+            self.command_SYMBOL_AFTER()
+        else:
+            args: List[Expression] = []
+            for i in range(0, 8):
+                self.reset_curexpr()
+                self.int_factor()
+                args.append(self.cur_expr)
+                if not self.match_current(TokenType.COMMA):
+                    self.error(self.cur_token.srcline, ErrorCode.NOARG)
+                    return
+                self.next_token()
+            # Last argument
+            self.reset_curexpr()
+            self.int_factor()
+            args.append(self.cur_expr)
+            self.emitter.symbol(args)
+            self.reset_curexpr()
+
+    def command_SYMBOL_AFTER(self) -> None:
+        """ <command_SYMBOL_AFTER> := SYMBOL AFTER <int_factor> """
+        assert self.cur_token is not None
+        self.next_token()
+        self.reset_curexpr()
+        args: List[Expression] = []
+        # number must be known at compile time
+        self.int_factor()
+        args.append(self.cur_expr)
+        self.emitter.symbolafter(args)
+        self.reset_curexpr()
 
     def command_TAB(self) -> None:
         """ 

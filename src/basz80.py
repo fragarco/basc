@@ -34,6 +34,7 @@ class Z80Backend:
         self.code: List[str] = []                                  # program code
         self.data: List[str] = ["\n","; DATA AREA\n", "\n"]        # data/constants declaration area    
         self.straccum: int = 0
+        self.symbolafter = 256
 
     def abort(self, message: str) -> None:
         print(f"Fatal error: {message}")
@@ -421,3 +422,12 @@ class Z80Backend:
         self._addcode("\tpop     de   ; remove operand1 from stack")
         self._addcode("\t;")
         self.straccum = self.straccum + 1
+    
+    def rtcall_SYMBOL(self) -> None:
+        self._addcode("\tld      a,l")
+        self._addcode("\tpop     hl")
+        self._addcode(f"\tcall    {FWCALL.TXT_SET_MATRIX} ;TXT_SET_MATRIX")
+
+    def rtcall_SYMBOL_AFTER(self) -> None:
+        self._addcode("\tpop     de")
+        self._addcode(f"\tcall    {FWCALL.TXT_SET_M_TABLE} ;TXT_SET_M_TABLE")

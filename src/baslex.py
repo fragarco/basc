@@ -121,13 +121,40 @@ class BASLexer:
         text = self.source[start_pos : self.cur_pos]
         return Token(text, TokenType.STRING, self.cur_line)
 
+    def _get_hexnumber(self) -> Token:
+        """
+        Returns all consecutive valid digits [0-9A-F] as a numeric token
+        """
+        start_pos = self.cur_pos
+        while self.peek().isdigit() or self.peek().upper() in 'ABCDEF':
+            self.next_char()
+        text = self.source[start_pos : self.cur_pos + 1]
+        return Token('0x' + text, TokenType.INTEGER, self.cur_line)
+    
+    def _get_binnumber(self) -> Token:
+        """
+        Returns all consecutive valid digits [0-1] as a numeric token
+        """
+        start_pos = self.cur_pos
+        while self.peek().isdigit() and self.peek() in '01':
+            self.next_char()
+        text = self.source[start_pos : self.cur_pos + 1]
+        return Token('0b' + text, TokenType.INTEGER, self.cur_line)
+    
     def _get_number(self) -> Token:
         """
         Returns all consecutive digits (and decimal if there is one) as a
         Numeric token.
         """
+        if self.cur_char == '&': # HEX or BIN number
+            self.next_char()
+            if self.cur_char.upper() == 'X':
+                return self._get_binnumber()
+            else:
+                return self._get_hexnumber()
+
+        tktype = TokenType.INTEGER    
         start_pos = self.cur_pos
-        tktype = TokenType.INTEGER
         while self.peek().isdigit():
             self.next_char()
         if self.peek() == '.': # REAL!
@@ -200,6 +227,10 @@ class BASLexer:
         elif self.cur_char == '@':
             token = Token('AT', TokenType.AT, self.cur_line)
     
+        elif self.cur_char == '&':
+            # hexadecimal number
+            token = self._get_number()
+
         elif self.cur_char.isdigit():
             token = self._get_number()
            
