@@ -15,6 +15,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 """
 
+__author__='Javier "Dwayne Hicks" Garcia'
+__version__='0.0dev'
+
 import argparse
 import baspp
 import baslex
@@ -31,6 +34,8 @@ def process_args():
     parser.add_argument('infile', help="BAS file with pseudo Locomotive Basic code.")
     parser.add_argument('-o', '--out', help="Target file name without extension. If missing, <infile> name will be used.")
     parser.add_argument('--verbose', action='store_true', help="Prints extra information during the compilation process.")
+    parser.add_argument('-v', '--version', action='version', version=f' Basc (Locomotive BASIC Compiler) Version {__version__}', help = "Shows program's version and exits")
+
     args = parser.parse_args()
     return args
 

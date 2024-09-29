@@ -28,6 +28,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
+__author__='Javier "Dwayne Hicks" Garcia'
+__version__='1.0'
 
 import sys
 import os
@@ -915,7 +917,7 @@ def process_args():
         description='Simple tool to create and manage Amstrad sigle side DSK files'
     )
     parser.add_argument('dskfile', help="DSK file. Used as input/output depending on the arguments used.")
-    parser.add_argument('--new', action='store_true', help='Creates a new empty DSK file.')
+    parser.add_argument('-n', '--new', action='store_true', help='Creates a new empty DSK file.')
     parser.add_argument('--check', action='store_true', help='Checks if the DSK file format is compatible with dsk.')
     parser.add_argument('--dump', action='store_true', help='Prints DSK file format information on the standard ouput.')
     parser.add_argument('--cat', action='store_true', help='Lists in the standard output the DSK file content.')
@@ -931,6 +933,7 @@ def process_args():
                         default="0x4000",
                         help='Call address (by default 0x4000).' +
                              'the binary file must include an AMSDOS header. If a map file is imported a symbol name can be used')
+    parser.add_argument('-v', '--version', action='version', version=f' DSK Tool Version {__version__}', help = "Shows program's version and exits")
 
     args = parser.parse_args()
     return args

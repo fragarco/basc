@@ -32,6 +32,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
+__author__='Javier "Dwayne Hicks" Garcia'
+__version__='1.0'
+
 import sys
 import os
 import argparse
@@ -402,6 +405,8 @@ def process_args():
     parser.add_argument('--name', type=str, default='', help='Name that has to be used to reference the image. If is not specified the input file name will be used.')
     parser.add_argument('--format', type=str, default='bin', help='Format to be used for the output file (bin by default).')
     parser.add_argument('--mode', type=int, default=0, help='Graphic mode (by default 0).')
+    parser.add_argument('-v', '--version', action='version', version=f' IMG Tool Version {__version__}', help = "Shows program's version and exits")
+
     args = parser.parse_args()
     return args
 

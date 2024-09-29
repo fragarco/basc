@@ -27,6 +27,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
+__author__='Javier "Dwayne Hicks" Garcia'
+__version__='1.0'
 
 import sys
 import argparse
@@ -831,7 +833,7 @@ def process_args():
         description='Simple tool to create and manage Amstrad CDT files'
     )
     parser.add_argument('cdtfile', help="CDT file. Used as input/output depending on the arguments used.")
-    parser.add_argument('--new', action='store_true', help='Creates a new empty CDT file.')
+    parser.add_argument('-n', '--new', action='store_true', help='Creates a new empty CDT file.')
     parser.add_argument('--check', action='store_true', help='Checks if the CDT file format is compatible.')
     parser.add_argument('--cat', action='store_true', help='Lists in the standard output all the blocks currently present in the CDT file.')
     parser.add_argument('--put-bin', type=str, help='Adds a new binary/basic file to CDT file.')
@@ -846,6 +848,8 @@ def process_args():
                              'the binary file must include an AMSDOS header. If a map file is imported a symbol name can be used')
     parser.add_argument('--name', type=str, help='Name that will be displayed when loading the binary/ascii file.')
     parser.add_argument('--speed', type=int, default=1, help='Write speed: 0 = 1000 bauds, 1 (default) = 2000 bauds.')
+    parser.add_argument('-v', '--version', action='version', version=f' CDT Tool Version {__version__}', help = "Shows program's version and exits")
+
     args = parser.parse_args()
     return args
 
