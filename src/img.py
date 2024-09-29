@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-IMGCONV.PY by Javier Garcia
+IMG.PY by Javier Garcia
 
 Tool that converts regular image files to CPC images. The conversion depends
 on the screen mode, that must be specified (0 by default). As reference:
@@ -366,7 +366,7 @@ def run_read_inputimg(srcfile):
         img = Image.open(srcfile)
         return img.convert('RGB')
     except Exception as e:
-        print("[imgconv] error trying to read the input image", srcfile)
+        print("[img] error trying to read the input image", srcfile)
         print(str(e))
         sys.exit(1)
 
@@ -388,7 +388,7 @@ def run_convert(args):
 
 def process_args():
     parser = argparse.ArgumentParser(
-        prog='imgconv.py',
+        prog='img.py',
         description="""
         Tool that converts regular image files (PNG, JPEG, etc.) to formats usable in
         Amstrad CPC programs:
@@ -410,7 +410,7 @@ def main():
     try:
         run_convert(args)
     except ConversionError as e:
-        print("[imgconv] error: " + str(e))
+        print("[img] error: " + str(e))
     sys.exit(0)
 
 if __name__ == "__main__":
