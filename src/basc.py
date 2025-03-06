@@ -61,6 +61,7 @@ def main() -> None:
     asmout = args.out + '.asm'
     backend = basz80.Z80Backend()
     backend.save_output(asmout, emitter.code, parser.symbols)
+    abasm.create_opdict()
     abasm.assemble(asmout)
 
 

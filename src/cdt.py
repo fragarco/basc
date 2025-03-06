@@ -799,12 +799,11 @@ def run_put_file(filein, args, cdt, header):
         if args.load_addr != None: header.addr_load = args.load_addr
     cdt.add_file(content, header, 2000 if args.speed == 1 else 1000)
     cdt.write(args.cdtfile)
-    print("[cdt] file added successfuly")
 
 def run_put_asciifile(args, cdt):
     header = DataHeader()
     header.type = DataHeader.FT_ASCII
-    print("[cdt] adding ASCII file", args.put_ascii, "to", args.cdtfile)
+    print("[cdt] adding ASCII file", args.put_ascii)
     run_put_file(args.put_ascii, args, cdt, header)
 
 def run_put_binfile(args, cdt):
@@ -813,11 +812,11 @@ def run_put_binfile(args, cdt):
         header.type = DataHeader.FT_BAS
     else:
         header.type = DataHeader.FT_BIN
-    print("[cdt] adding BIN file", args.put_bin, "to", args.cdtfile)
+    print("[cdt] adding BIN file", args.put_bin)
     run_put_file(args.put_bin, args, cdt, header)
 
 def run_put_rawfile(args, cdt):
-    print("[cdt] adding raw file", args.put_raw, "to", args.cdtfile)
+    print("[cdt] adding raw file", args.put_raw)
     run_put_file(args.put_raw, args, cdt, None)
 
 def aux_int(param):

@@ -29,7 +29,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 __author__='Javier "Dwayne Hicks" Garcia'
-__version__='1.0'
+__version__='1.01'
 
 import sys
 import os
@@ -856,24 +856,23 @@ def run_get_start(startaddr, mapfile):
         startaddr = startaddr.upper()
         if startaddr in mapfile:
             return mapfile[startaddr][0]
-        print("[dsk] invalid start address value")
+        print(f"[dsk] invalid start address value: {startaddr}")
         sys.exit(1)
 
 def run_put_file(infile, dskfile, disk, content):
     dirtable = disk.get_dirtable()
     ientry = dirtable.can_allocate(len(content))
     if ientry == -1:
-        print("[dsk] disk lacks enough free space to include the new file")
+        print("no enough space")
         sys.exit(1)
     sectors = dirtable.write_entries(ientry, infile, len(content))
     disk.set_dirtable(dirtable)
     disk.add_content(sectors, content)
     disk.write(dskfile)
-    print("[dsk] file added successfuly")
 
 def run_put_asciifile(args, disk):
     content = run_read_input_file(args.put_ascii)
-    print("[dsk] adding ASCII file", args.put_ascii, "to", args.dskfile)
+    print("[dsk] adding ASCII file", args.put_ascii)
     run_check(args, disk)
     # ASCII files always go without AMSDOS header. Additionaly, CPM 2.2 uses a 
     # special character to indicate end of file. Lets check if the file already
@@ -882,26 +881,29 @@ def run_put_asciifile(args, disk):
         content.extend(CPM_TEXT_EOF.to_bytes(1, 'little'))
     run_put_file(args.put_ascii, args.dskfile, disk, content)
 
-def run_put_binfile(args, disk, infile, addheader):
+def run_put_binfile(args, disk, infile):
     content = run_read_input_file(infile)
-    print("[dsk] adding binary file",
-          infile, "to", args.dskfile,
-          '' if addheader else 'without adding an AMSDOS header')
     run_check(args, disk)
     header = AmsdosHead()
     if len(content) > 128:
         header.set(content[0:128])
-        if header.is_valid_header() and addheader:
-            print('[dsk] AMSDOS header found, deleting it before generating a new one')
+        if header.is_valid_header():
+            print('[dsk] removing current AMSDOS header for', infile)
             content = content[128:]
-    if addheader:
-        mapfile = {}
-        header.build(infile, len(content))
-        if args.map_file != None: mapfile = run_read_mapfile(args.map_file)
-        if args.load_addr != None: header.addr_load = args.load_addr
-        if args.start_addr != None: header.addr_entry = run_get_start(args.start_addr, mapfile)
-        header.update_checksum()
-        content = bytearray(header.compose() + content)
+    print("[dsk] adding BIN file", infile)
+    mapfile = {}
+    header.build(infile, len(content))
+    if args.map_file != None: mapfile = run_read_mapfile(args.map_file)
+    if args.load_addr != None: header.addr_load = args.load_addr
+    if args.start_addr != None: header.addr_entry = run_get_start(args.start_addr, mapfile)
+    header.update_checksum()
+    content = bytearray(header.compose() + content)
+    run_put_file(infile, args.dskfile, disk, content)
+
+def run_put_rawfile(args, disk, infile):
+    content = run_read_input_file(infile)
+    run_check(args, disk)
+    print("[dsk] adding RAW file", infile)
     run_put_file(infile, args.dskfile, disk, content)
 
 def aux_int(param):
@@ -922,9 +924,10 @@ def process_args():
     parser.add_argument('--dump', action='store_true', help='Prints DSK file format information on the standard ouput.')
     parser.add_argument('--cat', action='store_true', help='Lists in the standard output the DSK file content.')
     parser.add_argument('--header', type=int, help='Prints AMSDOS header for indicated file entry starting at 0.')
+    parser.add_argument('--no-header', action='store_true', help='Used together with the --get option extracs files without AMSDOS header.')
     parser.add_argument('--get', type=int, help='Extracts file pointed by the indicated entry. Use --no-header to remove AMSDOS header.')
-    parser.add_argument('--put-bin', type=str, help='Adds a new binary file to DSK file creating and appending an extra AMSDOS header.')
-    parser.add_argument('--put-raw', type=str, help='Adds a new binary file to DSK file without creating an extra AMSDOS header.')
+    parser.add_argument('--put-bin', type=str, help='Adds a new binary file to DSK file generating an AMSDOS header.')
+    parser.add_argument('--put-raw', type=str, help='Adds a new binary file to DSK file without generating an AMSDOS header.')
     parser.add_argument('--put-ascii', type=str, help='Adds a new ASCII file to DSK file. The file should not include an AMSDOS header.')
     parser.add_argument('--map-file', type=str, help='Imports a map file with symbol names and addresses that can be referenced in the --start-addr option')
     parser.add_argument('--load-addr', type=aux_int, default=0x4000, help='Initial address to load the file (default 0x4000). Only used in binary files with appended AMSDOS headers.')
@@ -949,8 +952,8 @@ def main():
     if args.header != None: run_dump_header(args, disk)
     if args.get != None: run_get_file(args, disk)
     if args.put_ascii != None: run_put_asciifile(args, disk)
-    if args.put_bin != None: run_put_binfile(args, disk, args.put_bin, True)
-    if args.put_raw != None: run_put_binfile(args, disk, args.put_raw, False)
+    if args.put_bin != None: run_put_binfile(args, disk, args.put_bin)
+    if args.put_raw != None: run_put_rawfile(args, disk, args.put_raw)
     sys.exit(0)
 
 if __name__ == "__main__":
