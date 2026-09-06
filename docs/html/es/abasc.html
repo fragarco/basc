@@ -1488,11 +1488,15 @@ real <code>x</code>. <code>x</code> debe estar dentro del rango
 <h3 id="clear"><code>CLEAR</code></h3>
 <p>Comando. Fija todas las variables numéricas a 0 y los strings a ““,
 cierra cualquier fichero abierto y vuelve a poner el modo para angulos a
-<code>RAD</code>.</p>
+<code>RAD</code>. Además, realizar también un RESTORE. Pese a que este
+comportamiento no está documentado, se ha comprobado que el interprete
+original de Locomotive BASIC así lo hace.</p>
 <h3 id="clear-input"><code>CLEAR INPUT</code></h3>
 <p>Comando. Este comando se introdujo con la versión BASIC 1.1. ABASC
 permite su uso incluso en un Amstrad CPC 464 utilizando la rutina del
-Firmware <code>KM RESET</code> en vez de <code>KM FLUSH</code>.</p>
+Firmware <code>KM RESET</code> en vez de <code>KM FLUSH</code>. Su
+utilidad es limpiar los caracteres almacenados en el buffer de lectura
+del teclado.</p>
 <h3 id="clg-tinta"><code>CLG [tinta]</code></h3>
 <p>Comando. Borra la pantalla de gráficos usando el valor actual de
 <code>PAPER</code>. Si <code>tinta</code> está presente, se fija como
@@ -4068,6 +4072,8 @@ compilación</li>
 <li>FRE(1) devolvía un valor erróneo</li>
 <li>SGN(x) no devolvía el valor correcto para números reales
 negativos</li>
+<li>CLEAR también hace un RESTORE siguiendo el comportamiento del
+interprete original de Locomotive BASIC</li>
 <li>Otros pequeños arreglos y mejoras</li>
 </ul></li>
 <li>Versión 1.2.4

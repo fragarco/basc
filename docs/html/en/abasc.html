@@ -1444,12 +1444,16 @@ the nearest integer. <code>x</code> must be within the range
 <pre class="basic"><code>PRINT CINT(PI)</code></pre>
 <h3 id="clear"><code>CLEAR</code></h3>
 <p><strong>Command</strong>. This command sets all numeric variables to
-0 and strings to ““, closes open files, and resets angle mode to
-<code>RAD</code>.</p>
+0, all strings to ““, closes open files, and resets angle mode to
+<code>RAD</code>. Additionally, It seems that in the original
+interpreter CLEAR also performed a RESTORE call. As a result, ABASC
+mimics that behave.</p>
 <h3 id="clear-input"><code>CLEAR INPUT</code></h3>
 <p><strong>Command</strong>. Introduced in BASIC 1.1. ABASC supports it
 even on an Amstrad CPC 464, using the firmware routine
-<code>KM RESET</code> instead of <code>KM FLUSH</code>.</p>
+<code>KM RESET</code> instead of <code>KM FLUSH</code>. It discards all
+previously typed input from the keyboard, still in the keyboard
+buffer.</p>
 <h3 id="clg-ink"><code>CLG [ink]</code></h3>
 <p><strong>Command</strong>. Clears the graphics screen using the
 current <code>PAPER</code> value. If <code>ink</code> is provided, it is
@@ -4042,6 +4046,8 @@ version 2 and version 2 plus.</p>
 compiler</li>
 <li>FRE(1) was reporting a wrong value</li>
 <li>SGN(x) did not return the right value for negative reals</li>
+<li>CLEAR now performs a RESTORE, mimicking the original Locomotive
+BASIC interpreter.</li>
 <li>Some other minor fixes and tweaks</li>
 </ul></li>
 <li>Version 1.2.4

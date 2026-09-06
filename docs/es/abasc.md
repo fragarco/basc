@@ -837,11 +837,11 @@ PRINT CINT(PI)
 
 ### `CLEAR`
 
-Comando. Fija todas las variables numéricas a 0 y los strings a "", cierra cualquier fichero abierto y vuelve a poner el modo para angulos a `RAD`.
+Comando. Fija todas las variables numéricas a 0 y los strings a "", cierra cualquier fichero abierto y vuelve a poner el modo para angulos a `RAD`. Además, realizar también un RESTORE. Pese a que este comportamiento no está documentado, se ha comprobado que el interprete original de Locomotive BASIC así lo hace.
 
 ### `CLEAR INPUT`
 
-Comando. Este comando se introdujo con la versión BASIC 1.1. ABASC permite su uso incluso en un Amstrad CPC 464 utilizando la rutina del Firmware `KM RESET` en vez de `KM FLUSH`.
+Comando. Este comando se introdujo con la versión BASIC 1.1. ABASC permite su uso incluso en un Amstrad CPC 464 utilizando la rutina del Firmware `KM RESET` en vez de `KM FLUSH`. Su utilidad es limpiar los caracteres almacenados en el buffer de lectura del teclado.
 
 ### `CLG [tinta]`
 
@@ -3323,6 +3323,7 @@ SUB         rsSetMode(nmode)
   - El uso de EXIT FOR y EXIT WHILE fuera de los bucles detenía la compilación
   - FRE(1) devolvía un valor erróneo
   - SGN(x) no devolvía el valor correcto para números reales negativos
+  - CLEAR también hace un RESTORE siguiendo el comportamiento del interprete original de Locomotive BASIC
   - Otros pequeños arreglos y mejoras
 
 - Versión 1.2.4

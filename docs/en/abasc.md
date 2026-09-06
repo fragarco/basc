@@ -832,11 +832,11 @@ PRINT CINT(PI)
 
 ### `CLEAR`
 
-**Command**. This command sets all numeric variables to 0 and strings to "", closes open files, and resets angle mode to `RAD`.
+**Command**. This command sets all numeric variables to 0, all strings to "", closes open files, and resets angle mode to `RAD`. Additionally, It seems that in the original interpreter CLEAR also performed a RESTORE call. As a result, ABASC mimics that behave. 
 
 ### `CLEAR INPUT`
 
-**Command**. Introduced in BASIC 1.1. ABASC supports it even on an Amstrad CPC 464, using the firmware routine `KM RESET` instead of `KM FLUSH`.
+**Command**. Introduced in BASIC 1.1. ABASC supports it even on an Amstrad CPC 464, using the firmware routine `KM RESET` instead of `KM FLUSH`. It discards all previously typed input from the keyboard, still in the keyboard buffer.
 
 ### `CLG [ink]`
 
@@ -3373,6 +3373,7 @@ SUB         rsSetMode(nmode)
   - EXIT FOR and EXIT WHILE out of loops where crashing the compiler
   - FRE(1) was reporting a wrong value
   - SGN(x) did not return the right value for negative reals
+  - CLEAR now performs a RESTORE, mimicking the original Locomotive BASIC interpreter.
   - Some other minor fixes and tweaks
 
 - Version 1.2.4

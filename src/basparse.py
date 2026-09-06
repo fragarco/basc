@@ -2183,8 +2183,6 @@ class LocBasParser:
             label = self._advance()
             args = [AST.Label(value = label.lexeme)]
             args[0].set_origin(label.line,label.col)
-        else:
-            self._raise_error(2, rtk, "invalid label")
         return AST.Command(name="RESTORE", args=args)
 
     @astnode

@@ -758,14 +758,19 @@ class CPCEmitter:
         """
         Clears all variables to zero or null. All open files are abandoned, all
         arrays and user functions are erased, and BASIC is set to radians mode
-        of calculation. 
+        of calculation.
+        Additionally it looks to do a RESTORE too. It's not documented but tested
+        in real hardware.
         """
         self._emit_import("rt_math_call")
         self._emit_import("rt_reset_vars")
+        self._emit_import("rt_datablock")
         self._emit_code("; CLEAR")
         self._emit_pushcontext()
         self._emit_code("call    rt_reset_vars", info="Fill all vars data area with 0s")
         self._emit_code("xor     a")
+        self._emit_code("ld      hl,_data_datablock_")
+        self._emit_code("ld      (rt_data_ptr),hl")
         self._emit_code(f"ld      ix,{FWCALL.MATH_SET_ANGLE_MODE}", info="SET_ANGLE_MODE")
         self._emit_code("call    rt_math_call")
         self._emit_code(f"call    {FWCALL.CAS_INITIALISE}", info="CAS_INITIALISE")
