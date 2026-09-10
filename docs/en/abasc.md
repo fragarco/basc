@@ -3367,6 +3367,9 @@ SUB         rsSetMode(nmode)
 
 # Changelog
 
+- Version 1.2.6
+  - 
+
 - Version 1.2.5
   - LINE INPUT #9 was generating an extra carriage return
   - NOT inverts each bit as does Locomotive BASIC interpreter

@@ -3317,6 +3317,9 @@ SUB         rsSetMode(nmode)
 
 # Historial de cambios
 
+- Versión 1.2.6
+  - 
+
 - Versión 1.2.5
   - LINE INPUT #9 producia un salto de línea adicional no deseado
   - El comando NOT invierte los bits tal y como hace el interprete de Locomotive BASIC
