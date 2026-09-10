@@ -638,8 +638,10 @@ class DirTable:
         Returns a list of all avaliable clusters indicating if they are
         free (True) or used (False) and the total remaining free space in KB
         """
-        clusters = [True for i in range(0, len(self.entries) * 16)]
-        freekb = int((DEF_SECTORS * DEF_TRACKS * 512) / 1024)
+        # 180 clusters of 1K (each one 2 sectors of 512 bytes)
+        nclusters = int((DEF_SECTORS * DEF_TRACKS * 512) / 1024) 
+        clusters = [True for i in range(0, nclusters)]
+        freekb = nclusters  # 180 KB
         # dir table space
         clusters[0] = clusters[1] = False
         freekb = freekb - 2
@@ -716,6 +718,7 @@ class AmsdosHead:
     def calculate_checksum(self):
         header = self.compose()
         checksum = 0
+        # AMSDOS checksum uses 67 bytes
         for i in range(0, 67): checksum = checksum + header[i]
         return checksum
 

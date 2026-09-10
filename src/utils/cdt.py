@@ -28,7 +28,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 __author__='Javier "Dwayne Hicks" Garcia'
-__version__='1.4.3'
+__version__='1.4.4'
 
 import sys
 import argparse
@@ -580,7 +580,7 @@ class BlockArchiveInfo:
             text = content[2:2+sz].decode('utf-8')
             self.strings.append((type, text))
             strings = strings - 1
-            content = content[0:2+sz]
+            content = content[2+sz:]
         return content
     
     def dump(self):
@@ -662,14 +662,7 @@ class CDT:
             print("[cdt] error in input file:", e.message)
         return False
 
-    def _add_file(self, incontent, header, speed):
-        # calculate total number of data segments of 256 bytes
-        segments = []
-        while len(incontent) > 0:
-            segment = incontent[0:256]
-            segments.append(segment)
-            incontent = incontent[256:]
-
+    def _add_file(self, segments, header, speed):
         while len(segments) > 0:
             """ Header """
             blocksegments = segments[0:8]
@@ -685,8 +678,6 @@ class CDT:
             data = bytearray(b'\x16')  # sync byte for data
             """ data segments up to 8 (256 * 8 = 2K) """
             for s in blocksegments:
-                # Check padding, all segments must be of 256 bytes
-                if len(s) < 256: s.extend(0x00 for i in range(len(s), 256))
                 crc = AUX_GET_CRC(s)
                 data.extend(s)
                 data.extend(crc.to_bytes(2, 'big'))  # !!! MSB first here
@@ -700,21 +691,31 @@ class CDT:
         endpause = BlockPause(DEF_PAUSE_FILE)
         self.blocks.append(endpause)
 
-    def _add_raw(self, incontent, speed):
-        block = BlockTurboSpeed(speed, DEF_PAUSE_FILE)
-        data = bytearray(b'\x16')  # sync byte for data
-        crc = AUX_GET_CRC(incontent)
-        data.extend(incontent)
-        data.extend(crc.to_bytes(2, 'big'))
-        data.extend(b'\xFF\xFF\xFF\xFF')
-        block.data = data
-        self.blocks.append(block)
+    def _add_raw(self, segments, speed):
+        for segment in segments:
+            block = BlockTurboSpeed(speed, DEF_PAUSE_FILE)
+            data = bytearray(b'\x16')  # sync byte for data
+            crc = AUX_GET_CRC(segment)
+            data.extend(segment)
+            data.extend(crc.to_bytes(2, 'big'))
+            data.extend(b'\xFF\xFF\xFF\xFF')
+            block.data = data
+            self.blocks.append(block)
 
     def add_file(self, incontent, header, speed):
+        # calculate total number of data segments of 256 bytes
+        segments = []
+        while len(incontent) > 0:
+            s = incontent[0:256]
+             # Check padding, all segments must be of 256 bytes
+            if len(s) < 256: s.extend(0x00 for i in range(len(s), 256))
+            segments.append(s)
+            incontent = incontent[256:]
+
         if header is not None:
-            self._add_file(incontent, header, speed)
+            self._add_file(segments, header, speed)
         else:
-            self._add_raw(incontent, speed)
+            self._add_raw(segments, speed)
     
     def check(self):
         self.header.check()

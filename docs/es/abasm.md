@@ -1274,6 +1274,9 @@ FD AE hh    	XOR   (IY+d)    5 Realiza una OR exclusiva entre el valor en (IY+d)
 
 # Historial de cambios
 
+- Versión 1.4.4
+  * Pequeñas mejoras y arreglos.
+  
 - Versión 1.4.3
   * Arreglos en algunos mensajes de error en la herramienta DSK.
   * Arreglada la codificación de bloques raw en la herramienta CDT.
