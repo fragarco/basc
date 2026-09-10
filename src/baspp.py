@@ -110,7 +110,7 @@ class LocBasPreprocessor:
                     if num < lastnum:
                         self._raise_error(
                             ecode=2,
-                            info=f"explicit line number {num} is under current auto value {autonum}",
+                            info=f"explicit line number {num} is under last auto value {lastnum}",
                             line=srcline+1,
                             srcfile=inputfile)
                     lastnum = num
