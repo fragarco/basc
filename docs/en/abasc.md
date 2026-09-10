@@ -3374,6 +3374,7 @@ SUB         rsSetMode(nmode)
   - FRE(1) was reporting a wrong value
   - SGN(x) did not return the right value for negative reals
   - CLEAR now performs a RESTORE, mimicking the original Locomotive BASIC interpreter.
+  - Abasm, DSK, CDT and all other tools upgraded to version 1.4.4
   - Some other minor fixes and tweaks
 
 - Version 1.2.4
