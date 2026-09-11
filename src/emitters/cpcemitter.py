@@ -1932,8 +1932,8 @@ class CPCEmitter:
         """
         self._emit_code("; INP(<port number>)")
         self._emit_expression(node.args[0])
-        self._emit_code("ld      c,l")
         self._emit_code("ld      b,h")
+        self._emit_code("ld      c,l")
         self._emit_code("in      a,(c)")
         self._emit_code("ld      l,a")
         self._emit_code("ld      h,0")
@@ -2754,8 +2754,8 @@ class CPCEmitter:
         self._emit_expression(node.args[1])
         self._emit_code("ld      a,l")
         self._emit_expression(node.args[0])
-        self._emit_code("ld      c,l")
         self._emit_code("ld      b,h")
+        self._emit_code("ld      c,l")
         self._emit_code("out     (c),a")
         self._emit_code(";")
 

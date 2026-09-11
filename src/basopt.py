@@ -427,6 +427,7 @@ class BasOptimizer:
             r"ld      hl,\1"
         )
     ]
+    
 
     def optimize_peephole(self, code: str) -> str:
         print("Optimizing assembly code...")

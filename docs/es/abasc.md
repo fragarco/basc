@@ -3318,7 +3318,7 @@ SUB         rsSetMode(nmode)
 # Historial de cambios
 
 - Versión 1.2.6
-  - 
+  - Arreglado un problema con la optimización de los comandos OUT e INP
 
 - Versión 1.2.5
   - LINE INPUT #9 producia un salto de línea adicional no deseado

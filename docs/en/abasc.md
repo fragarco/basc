@@ -3368,7 +3368,7 @@ SUB         rsSetMode(nmode)
 # Changelog
 
 - Version 1.2.6
-  - 
+  - Fixed a problem when optimizing OUT and INP code
 
 - Version 1.2.5
   - LINE INPUT #9 was generating an extra carriage return
